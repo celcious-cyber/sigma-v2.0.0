@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme {
+  /* SIGMA v2.0.0 Semantic Theme Tokens */
+  --color-sigma-app: var(--sigma-app-bg);
+  --color-sigma-surface: var(--sigma-surface);
+  --color-sigma-surface-alt: var(--sigma-surface-alt);
+  --color-sigma-text: var(--sigma-text-main);
+  --color-sigma-muted: var(--sigma-text-muted);
+  --color-sigma-border: var(--sigma-border);
+  
+  --color-sigma-primary: #6366f1;
+  --color-sigma-secondary: #0ea5e9;
+  --color-sigma-emerald: #10b981;
+  
+  --font-inter: "Inter", sans-serif;
+}
+
+:root {
+  --sigma-app-bg: #f8fafc; /* slate-50 */
+  --sigma-surface: #ffffff;
+  --sigma-surface-alt: #f1f5f9; /* slate-100 */
+  --sigma-text-main: #0f172a; /* slate-900 */
+  --sigma-text-muted: #64748b; /* slate-500 */
+  --sigma-border: #e2e8f0; /* slate-200 */
+}
+
+.dark {
+  --sigma-app-bg: #020617; /* slate-950 */
+  --sigma-surface: rgba(255, 255, 255, 0.01);
+  --sigma-surface-alt: rgba(255, 255, 255, 0.03);
+  --sigma-text-main: #f8fafc; /* slate-50 */
+  --sigma-text-muted: #94a3b8; /* slate-400 */
+  --sigma-border: rgba(255, 255, 255, 0.05);
+}
+
+/* Base Styles */
+@layer base {
+  body {
+    @apply bg-sigma-app text-sigma-text font-inter antialiased transition-colors duration-300;
+    min-height: 100vh;
+  }
+
+  /* Custom radial gradient for dark mode premium feel */
+  .dark body {
+    background-image: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+  }
+}
+
+/* Glassmorphism Utilities */
+@layer components {
+  .glass {
+    @apply bg-sigma-surface backdrop-blur-lg border border-sigma-border rounded-2xl;
+  }
+  
+  .glass-card {
+    @apply bg-sigma-surface backdrop-blur-lg border border-sigma-border rounded-[2.5rem] shadow-2xl;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .glass-card {
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .premium-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-sky-400 font-bold;
+  }
+}
+
+/* Micro-animations */
+.hover-scale {
+  @apply transition-transform duration-200 hover:scale-105;
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--sigma-border);
+  border-radius: 10px;
+}
