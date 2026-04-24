@@ -15,6 +15,18 @@ axios.interceptors.request.use((config) => {
   return Promise.reject(error)
 })
 
+// Global Response Interceptor - Handle 401 Unauthorized
+axios.interceptors.response.use((response) => {
+  return response
+}, (error) => {
+  if (error.response && error.response.status === 401) {
+    localStorage.removeItem('sigma_token')
+    localStorage.removeItem('sigma_user')
+    window.location.href = '/login'
+  }
+  return Promise.reject(error)
+})
+
 const app = createApp(App)
 app.use(router)
 app.mount('#app')

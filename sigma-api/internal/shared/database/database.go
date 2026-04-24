@@ -33,6 +33,11 @@ func InitDB(dsn string) {
 		log.Fatalf("Failed to get generic database object: %v", err)
 	}
 
+	// Verify connection
+	if err := sqlDB.Ping(); err != nil {
+		log.Fatalf("Failed to ping database: %v", err)
+	}
+
 	// Connection Tuning for SQLite:
 	// Sequential write guarantee to avoid "database is locked" errors.
 	sqlDB.SetMaxOpenConns(1)
@@ -74,6 +79,11 @@ func InitDB(dsn string) {
 		&models.Book{},
 		&models.Borrowing{},
 		&models.Setting{},
+		&models.InstitutionalUnit{},
+		&models.StudyHour{},
+		&models.LessonMemorization{},
+		&models.TeacherAttendance{},
+		&models.TeachingJournal{},
 	)
 	if err != nil {
 		log.Fatalf("Auto-Migration failed: %v", err)

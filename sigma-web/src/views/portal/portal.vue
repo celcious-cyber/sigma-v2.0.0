@@ -24,7 +24,7 @@ const moduleMapping = {
 
 const panels = ref([
   { name: 'Sigmabase', icon: DatabaseZap, color: 'emerald', desc: 'Data Induk Santri & Wali', url: '/sigmabase' },
-  { name: 'Sigmaedu', icon: School, color: 'blue', desc: 'Kurikulum & Nilai Akademik', url: '#' },
+  { name: 'Sigmaedu', icon: School, color: 'blue', desc: 'Kurikulum & Nilai Akademik', url: '/sigmaedu' },
   { name: 'Sigmaflow', icon: Wallet, color: 'indigo', desc: 'Manajemen Keuangan & SPP', url: '/flow/invoices' },
   { name: 'Sigmadesk', icon: NotepadText, color: 'purple', desc: 'Tamu & Surat Menyurat', url: '#' },
   { name: 'Sigmaguard', icon: ShieldCheck, color: 'rose', desc: 'Perizinan & Keamanan', url: '/guard/violations' },

@@ -18,23 +18,137 @@ const routes = [
   // Sigmabase Module
   {
     path: '/sigmabase',
-    name: 'Sigmabase',
-    component: () => import('../views/sigmabase/dashboard.vue')
+    component: () => import('../layouts/SigmabaseLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'Sigmabase',
+        component: () => import('../views/sigmabase/dashboard.vue')
+      },
+      {
+        path: 'students',
+        name: 'Students',
+        component: () => import('../views/sigmabase/students.vue')
+      },
+      {
+        path: 'teachers',
+        name: 'Teachers',
+        component: () => import('../views/sigmabase/teachers.vue')
+      },
+      {
+        path: 'alumni',
+        name: 'Alumni',
+        component: () => import('../views/sigmabase/alumni.vue')
+      },
+      {
+        path: 'units',
+        name: 'Units',
+        component: () => import('../views/sigmabase/units.vue')
+      }
+    ]
   },
+
   {
-    path: '/sigmabase/students',
-    name: 'Students',
-    component: () => import('../views/sigmabase/students.vue')
-  },
-  {
-    path: '/sigmabase/teachers',
-    name: 'Teachers',
-    component: () => import('../views/sigmabase/teachers.vue')
-  },
-  {
-    path: '/sigmabase/alumni',
-    name: 'Alumni',
-    component: () => import('../views/sigmabase/alumni.vue')
+    path: '/sigmaedu',
+    component: () => import('../layouts/SigmaeduLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'Sigmaedu',
+        component: () => import('../views/sigmaedu/dashboard.vue')
+      },
+      {
+        path: 'subjects',
+        name: 'Subjects',
+        component: () => import('../views/sigmaedu/subjects.vue')
+      },
+      {
+        path: 'hours',
+        name: 'StudyHours',
+        component: () => import('../views/sigmaedu/hours.vue')
+      },
+      {
+        path: 'calendar',
+        name: 'AcademicCalendar',
+        component: () => import('../views/sigmaedu/calendar.vue')
+      },
+      {
+        path: 'classes',
+        name: 'Classrooms',
+        component: () => import('../views/sigmaedu/classes.vue')
+      },
+      {
+        path: 'students',
+        name: 'EduStudents',
+        component: () => import('../views/sigmaedu/students.vue')
+      },
+      {
+        path: 'schedules',
+        name: 'EduSchedules',
+        component: () => import('../views/sigmaedu/schedules.vue'),
+        meta: { title: 'Jadwal Pelajaran' }
+      },
+      {
+        path: 'attendance',
+        name: 'EduAttendance',
+        component: () => import('../views/sigmaedu/attendance.vue'),
+        meta: { title: 'Presensi Santri' }
+      },
+      {
+        path: 'grades',
+        name: 'EduGrades',
+        component: () => import('../views/sigmaedu/assessments.vue'),
+        meta: { title: 'Nilai Pelajaran' }
+      },
+      {
+        path: 'attitude',
+        name: 'EduAttitude',
+        component: () => import('../views/sigmaedu/attitude.vue'),
+        meta: { title: 'Nilai Karakter' }
+      },
+      {
+        path: 'tahfidz',
+        name: 'EduTahfidz',
+        component: () => import('../views/sigmaedu/tahfidz.vue'),
+        meta: { title: 'Hafalan Quran' }
+      },
+      {
+        path: 'memorization',
+        name: 'EduMemorization',
+        component: () => import('../views/sigmaedu/memorization.vue'),
+        meta: { title: 'Hafalan Pelajaran' }
+      },
+      {
+        path: 'teacher-attendance',
+        name: 'EduTeacherAttendance',
+        component: () => import('../views/sigmaedu/teacher_attendance.vue'),
+        meta: { title: 'Presensi Guru' }
+      },
+      {
+        path: 'journal',
+        name: 'EduTeachingJournal',
+        component: () => import('../views/sigmaedu/journal.vue'),
+        meta: { title: 'Jurnal Mengajar' }
+      },
+      {
+        path: 'reports/kmi',
+        name: 'EduReportsKMI',
+        component: () => import('../views/sigmaedu/reports.vue'),
+        meta: { title: 'Rapot KMI', type: 'kmi' }
+      },
+      {
+        path: 'reports/tahfidz',
+        name: 'EduReportsTahfidz',
+        component: () => import('../views/sigmaedu/reports_tahfidz.vue'),
+        meta: { title: 'Rapot Tahfidz', type: 'tahfidz' }
+      },
+      {
+        path: 'reports/ekskul',
+        name: 'EduReportsEkskul',
+        component: () => import('../views/sigmaedu/reports_ekskul.vue'),
+        meta: { title: 'Rapot Ekskul', type: 'ekskul' }
+      }
+    ]
   },
   {
     path: '/dashboard',

@@ -30,6 +30,13 @@ type StudentService interface {
 	UpdateAlumni(id uint, data map[string]interface{}) error
 	DeleteAlumni(id uint) error
 	GraduateStudent(studentID uint, alumniData map[string]interface{}) (uint, error)
+	// Units
+	GetAllUnits() ([]models.InstitutionalUnit, error)
+	GetUnitByID(id uint) (*models.InstitutionalUnit, error)
+	CreateUnit(unit *models.InstitutionalUnit) error
+	UpdateUnit(id uint, data map[string]interface{}) error
+	DeleteUnit(id uint) error
+	SeedUnits() error
 	// Classrooms
 	GetAllClassrooms() ([]models.Classroom, error)
 	// Dashboard Stats
@@ -213,32 +220,43 @@ func (s *studentService) IsPermitBlocked(studentID uint) (bool, map[string]inter
 }
 func (s *studentService) GetStats() (map[string]interface{}, error) {
 	var totalSantri int64
-	var santriLaki int64
-	var santriPerempuan int64
-	var perizinanHariIni int64
+	var totalGuru int64
+	var totalAlumni int64
 
 	s.db.Model(&models.Student{}).Count(&totalSantri)
+	s.db.Model(&models.Teacher{}).Count(&totalGuru)
+	s.db.Model(&models.Alumni{}).Count(&totalAlumni)
+	
+	// Gender distribution (Students)
+	var santriLaki, santriPerempuan int64
 	s.db.Model(&models.Student{}).Where("gender = ?", "L").Count(&santriLaki)
 	s.db.Model(&models.Student{}).Where("gender = ?", "P").Count(&santriPerempuan)
-	
-	// Perizinan check: Count active permits where today is within out_time/in_time
-	s.db.Model(&models.Permit{}).Where("date(out_time) = date('now')").Count(&perizinanHariIni)
 
-	// Trend Pendaftaran (Contoh: 6 bulan terakhir)
-	// Kita akan kembalikan data statis dulu jika tidak ada data, atau logic grouping sederhana
+	// Teacher Status Distribution
+	type StatusCount struct {
+		Status string
+		Count  int64
+	}
+	var teacherStatus []StatusCount
+	s.db.Model(&models.Teacher{}).Select("status, count(*) as count").Group("status").Scan(&teacherStatus)
+
+	// Alumni Service Status
+	var alumniMengabdi, alumniTidak int64
+	s.db.Model(&models.Alumni{}).Where("service_status = ?", "Mengabdi").Count(&alumniMengabdi)
+	s.db.Model(&models.Alumni{}).Where("service_status != ?", "Mengabdi").Count(&alumniTidak)
+
+	// Trend Pendaftaran Students (Last 6 Months)
 	type MonthlyCount struct {
 		Month string
 		Count int
 	}
 	var trend []MonthlyCount
-	// In SQLite: strftime('%m', created_at)
 	s.db.Raw(`SELECT strftime('%Y-%m', created_at) as month, count(*) as count 
-			  FROM santris 
+			  FROM students 
 			  GROUP BY month 
 			  ORDER BY month DESC 
 			  LIMIT 6`).Scan(&trend)
 
-	// Reverse trend to show Jan -> June
 	trendLabels := []string{}
 	trendData := []int{}
 	for i := len(trend) - 1; i >= 0; i-- {
@@ -247,18 +265,48 @@ func (s *studentService) GetStats() (map[string]interface{}, error) {
 	}
 
 	return map[string]interface{}{
-		"total_santri":       totalSantri,
-		"santri_aktif":       totalSantri, 
-		"perizinan_hari_ini": perizinanHariIni,
+		"total_santri": totalSantri,
+		"total_guru":   totalGuru,
+		"total_alumni": totalAlumni,
 		"chart_gender": map[string]int64{
 			"L": santriLaki,
 			"P": santriPerempuan,
 		},
+		"chart_teacher_status": teacherStatus,
+		"chart_alumni_service": map[string]int64{
+			"Mengabdi": alumniMengabdi,
+			"Lainnya":  alumniTidak,
+		},
+		"alumni_regions": s.getTopRegions(),
 		"chart_trend": map[string]interface{}{
 			"labels": trendLabels,
 			"data":   trendData,
 		},
 	}, nil
+}
+
+func (s *studentService) getTopRegions() []map[string]interface{} {
+	type RegionCount struct {
+		BirthPlace string `gorm:"column:birth_place"`
+		Count      int64  `gorm:"column:count"`
+	}
+	var results []RegionCount
+	s.db.Model(&models.Alumni{}).
+		Select("birth_place, count(*) as count").
+		Where("birth_place != ''").
+		Group("birth_place").
+		Order("count DESC").
+		Limit(5).
+		Scan(&results)
+
+	formatted := []map[string]interface{}{}
+	for _, r := range results {
+		formatted = append(formatted, map[string]interface{}{
+			"name":  r.BirthPlace,
+			"value": r.Count,
+		})
+	}
+	return formatted
 }
 
 func (s *studentService) CreateStudent(student *models.Student) error {
@@ -276,3 +324,48 @@ func (s *studentService) UpdateStudent(id uint, data *models.Student) error {
 func (s *studentService) DeleteStudent(id uint) error {
 	return s.db.Delete(&models.Student{}, id).Error
 }
+
+func (s *studentService) GetAllUnits() ([]models.InstitutionalUnit, error) {
+	var units []models.InstitutionalUnit
+	if err := s.db.Find(&units).Error; err != nil {
+		return nil, err
+	}
+	return units, nil
+}
+
+func (s *studentService) GetUnitByID(id uint) (*models.InstitutionalUnit, error) {
+	var unit models.InstitutionalUnit
+	if err := s.db.First(&unit, id).Error; err != nil {
+		return nil, err
+	}
+	return &unit, nil
+}
+
+func (s *studentService) CreateUnit(unit *models.InstitutionalUnit) error {
+	return s.db.Create(unit).Error
+}
+
+func (s *studentService) UpdateUnit(id uint, data map[string]interface{}) error {
+	return s.db.Model(&models.InstitutionalUnit{}).Where("id = ?", id).Updates(data).Error
+}
+
+func (s *studentService) DeleteUnit(id uint) error {
+	return s.db.Delete(&models.InstitutionalUnit{}, id).Error
+}
+
+func (s *studentService) SeedUnits() error {
+	units := []models.InstitutionalUnit{
+		{Name: "SMP", Code: "SMP-AH", Description: "Sekolah Menengah Pertama Al-Hikmah"},
+		{Name: "MA", Code: "MA-AH", Description: "Madrasah Aliyah Al-Hikmah"},
+		{Name: "KMI", Code: "KMI-AH", Description: "Kulliyatul Mu'allimin Al-Islamiyah (Pondok)"},
+	}
+
+	for _, unit := range units {
+		var existing models.InstitutionalUnit
+		if err := s.db.Where("name = ?", unit.Name).First(&existing).Error; err != nil {
+			s.db.Create(&unit)
+		}
+	}
+	return nil
+}
+

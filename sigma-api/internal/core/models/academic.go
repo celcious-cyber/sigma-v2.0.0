@@ -16,8 +16,8 @@ type Subject struct {
 // TeacherSchedule represents a timetable for a teacher
 type TeacherSchedule struct {
 	gorm.Model
-	UserID      uint       `gorm:"not null" json:"user_id"` // The Teacher
-	User        *User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	TeacherID   uint       `gorm:"column:teacher_id;not null" json:"teacher_id"`
+	Teacher     *Teacher   `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
 	ClassroomID uint       `gorm:"not null" json:"classroom_id"`
 	Classroom   *Classroom `gorm:"foreignKey:ClassroomID" json:"classroom,omitempty"`
 	SubjectID   uint       `gorm:"not null" json:"subject_id"`
@@ -34,6 +34,8 @@ type Attendance struct {
 	Student     *Student   `gorm:"foreignKey:StudentID" json:"student,omitempty"`
 	ClassroomID uint       `gorm:"not null" json:"classroom_id"`
 	Classroom   *Classroom `gorm:"foreignKey:ClassroomID" json:"classroom,omitempty"`
+	SubjectID   *uint      `json:"subject_id"` // Optional: for subject-based attendance
+	Subject     *Subject   `gorm:"foreignKey:SubjectID" json:"subject,omitempty"`
 	Date        time.Time  `json:"date"`
 	Status      string     `json:"status"` // Hadir, Izin, Sakit, Alpa
 	RecordedBy  uint       `json:"recorded_by"`
@@ -57,6 +59,15 @@ type Assessment struct {
 	Remarks      *string  `gorm:"type:text" json:"remarks"`
 	Term         string   `json:"term"`          // Ganjil, Genap
 	AcademicYear string   `json:"academic_year"` // 2024/2025
+}
+
+// StudyHour represents a lesson time slot (e.g., "Jam Ke-1")
+type StudyHour struct {
+	gorm.Model
+	Name      string `gorm:"not null" json:"name"`      // Jam Ke-1
+	StartTime string `gorm:"not null" json:"start_time"` // 07:00
+	EndTime   string `gorm:"not null" json:"end_time"`   // 07:45
+	IsBreak   bool   `gorm:"default:false" json:"is_break"`
 }
 
 // StudyPeriod represents an academic semester or specific period
@@ -93,4 +104,46 @@ type QuranMemorization struct {
 	Grade      *string   `json:"grade"`
 	Remarks    *string   `gorm:"type:text" json:"remarks"`
 	Date       time.Time `json:"date"`
+}
+
+// LessonMemorization represents memorization of non-Quran subjects
+type LessonMemorization struct {
+	gorm.Model
+	StudentID   uint      `gorm:"not null" json:"student_id"`
+	Student     *Student  `gorm:"foreignKey:StudentID" json:"student,omitempty"`
+	TeacherID   uint      `gorm:"not null" json:"teacher_id"`
+	Author      *User     `gorm:"foreignKey:TeacherID" json:"author,omitempty"`
+	SubjectName string    `json:"subject_name"` // Nama Pelajaran
+	Title       string    `json:"title"`        // Judul Hafalan
+	Grade       *string   `json:"grade"`
+	Remarks     *string   `gorm:"type:text" json:"remarks"`
+	Date        time.Time `json:"date"`
+}
+
+// TeacherAttendance represents daily presence for staff/teachers
+type TeacherAttendance struct {
+	gorm.Model
+	TeacherID uint      `gorm:"not null" json:"teacher_id"`
+	Teacher   *Teacher  `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
+	Date      time.Time `json:"date"`
+	Status    string    `json:"status"` // Hadir, Izin, Sakit, Alpa, Tugas Luar
+	CheckIn   *string   `json:"check_in"`
+	CheckOut  *string   `json:"check_out"`
+	Remarks   *string   `gorm:"type:text" json:"remarks"`
+}
+
+// TeachingJournal represents a record of what was taught by a teacher
+type TeachingJournal struct {
+	gorm.Model
+	TeacherID   uint       `gorm:"not null" json:"teacher_id"`
+	Teacher     *Teacher   `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
+	ClassroomID uint       `gorm:"not null" json:"classroom_id"`
+	Classroom   *Classroom `gorm:"foreignKey:ClassroomID" json:"classroom,omitempty"`
+	SubjectID   uint       `gorm:"not null" json:"subject_id"`
+	Subject     *Subject   `gorm:"foreignKey:SubjectID" json:"subject,omitempty"`
+	StudyHourID uint       `gorm:"not null" json:"study_hour_id"`
+	StudyHour   *StudyHour `gorm:"foreignKey:StudyHourID" json:"study_hour,omitempty"`
+	Date        time.Time  `json:"date"`
+	Status      string     `gorm:"type:varchar(20)" json:"status"` // Hadir, Izin, Sakit, Alpha
+	Remarks     string     `gorm:"type:text" json:"remarks"`        // Materi/Catatan
 }

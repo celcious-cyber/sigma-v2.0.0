@@ -5,7 +5,6 @@ import {
   Download, Edit, Trash2, X, Plus, 
   FileSpreadsheet, FileText, Upload, Archive, Users, Mail, Phone, Camera, ChevronRight
 } from 'lucide-vue-next'
-import SigmabaseSidebar from '../../components/SigmabaseSidebar.vue'
 import axios from 'axios'
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
@@ -354,14 +353,8 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-sigma-app text-sigma-text overflow-hidden font-sans transition-colors duration-300">
-    
-    <SigmabaseSidebar activeItem="Data Guru" />
-
-    <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-      
-      <!-- Sticky Header -->
+  <div class="flex flex-col">
+    <!-- Sticky Header -->
       <div class="sticky top-0 z-40 bg-sigma-app/80 backdrop-blur-xl border-b border-sigma-border px-8 py-6 space-y-6 shadow-sm">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div class="flex items-center gap-3">
@@ -702,7 +695,6 @@ const handleSubmit = async () => {
           </div>
         </div>
       </Transition>
-    </main>
   </div>
 </template>
 

@@ -100,6 +100,38 @@ func (h *SigmabaseHandler) GetStats(c fiber.Ctx) error {
 	}
 	return c.JSON(stats)
 }
+
+// GetUnits returns a list of institutional units
+func (h *SigmabaseHandler) GetUnits(c fiber.Ctx) error {
+	units, err := h.studentService.GetAllUnits()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(units)
+}
+
+// CreateUnit creates a new institutional unit
+func (h *SigmabaseHandler) CreateUnit(c fiber.Ctx) error {
+	var unit models.InstitutionalUnit
+	if err := c.Bind().JSON(&unit); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	if err := h.studentService.CreateUnit(&unit); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(unit)
+}
+
+// SeedUnits populates default units
+func (h *SigmabaseHandler) SeedUnits(c fiber.Ctx) error {
+	if err := h.studentService.SeedUnits(); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "Units seeded successfully"})
+}
+
 type StudentDTO struct {
 	Name        string `json:"name"`
 	Gender      string `json:"gender"`
@@ -176,6 +208,7 @@ func (h *SigmabaseHandler) CreateStudent(c fiber.Ctx) error {
 	}
 
 	if err := h.studentService.CreateStudent(&student); err != nil {
+		fmt.Printf("[ERROR] Failed to create student: %v\n", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create student: " + err.Error()})
 	}
 

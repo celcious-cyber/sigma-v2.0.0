@@ -32,6 +32,18 @@ func main() {
 
 	// 3. Register Gateways (BFF Strategy)
 	api := app.Group("/api/v1")
+
+	// Health check
+	api.Get("/health", func(c fiber.Ctx) error {
+		sqlDB, err := database.DB.DB()
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"status": "error", "message": "database not initialized"})
+		}
+		if err := sqlDB.Ping(); err != nil {
+			return c.Status(500).JSON(fiber.Map{"status": "error", "message": "database ping failed"})
+		}
+		return c.JSON(fiber.Map{"status": "ok", "database": "connected"})
+	})
 	
 	// Global Middlewares
 	api.Use(recover.New())

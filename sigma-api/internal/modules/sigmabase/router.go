@@ -41,4 +41,9 @@ func RegisterAdminRoutes(router fiber.Router, service StudentService) {
 
 	// Classrooms
 	base.Get("/classrooms", h.GetClassrooms)
+
+	// Units
+	base.Get("/units", h.GetUnits)
+	base.Post("/units", h.CreateUnit)
+	base.Post("/units/seed", h.SeedUnits)
 }

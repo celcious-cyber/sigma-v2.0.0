@@ -3,9 +3,8 @@ import { ref, onMounted, computed } from 'vue'
 import { 
   Search, Filter, 
   Edit, Trash2, X, Plus, 
-  FileSpreadsheet, FileText, Upload, Users, Mail, Phone, Camera, GraduationCap, Download
+  FileSpreadsheet, FileText, Upload, Mail, Phone, Camera, GraduationCap, Download
 } from 'lucide-vue-next'
-import SigmabaseSidebar from '../../components/SigmabaseSidebar.vue'
 import axios from 'axios'
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
@@ -16,32 +15,20 @@ const API_URL = '/api/v1/admin/base/alumni'
 
 // State
 const alumniList = ref<any[]>([])
-const loading = ref(true)
-const search = ref('')
+const isLoading = ref(false)
+const searchQuery = ref('')
 const isYearDropdownOpen = ref(false)
 const selectedYear = ref('')
 const showDataMenu = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+const photoInput = ref<HTMLInputElement | null>(null)
 
-onMounted(() => {
-  window.addEventListener('click', (e: MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (!target.closest('.year-dropdown-container')) {
-      isYearDropdownOpen.value = false
-    }
-    if (!target.closest('.data-menu-container')) {
-      showDataMenu.value = false
-    }
-  })
-})
-
-const uniqueYears = computed(() => {
-  const years = alumniList.value.map(a => a.graduation_year).filter(y => y)
-  return [...new Set(years)].sort((a, b) => String(b).localeCompare(String(a)))
-})
-const showModal = ref(false)
-const modalMode = ref('create') // 'create' or 'edit'
+// Modal State
+const isModalOpen = ref(false)
+const isEditing = ref(false)
 const currentId = ref<number | null>(null)
+const photoPreview = ref('')
+const photoFile = ref<File | null>(null)
 
 const form = ref({
   name: '',
@@ -59,95 +46,148 @@ const form = ref({
   photo: ''
 })
 
-const photoFile = ref<File | null>(null)
-const photoPreview = ref<string | null>(null)
+// Handle click outside to close dropdowns
+onMounted(() => {
+  window.addEventListener('click', (e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.closest('.year-dropdown-container')) {
+      isYearDropdownOpen.value = false
+    }
+    if (!target.closest('.data-menu-container')) {
+      showDataMenu.value = false
+    }
+  })
+})
+
+const uniqueYears = computed(() => {
+  const years = alumniList.value.map(a => a.graduation_year).filter(y => y)
+  return [...new Set(years)].sort((a, b) => String(b).localeCompare(String(a)))
+})
 
 // Methods
 const fetchAlumni = async () => {
-  loading.value = true
   try {
+    isLoading.value = true
     const response = await axios.get(API_URL)
     alumniList.value = response.data
   } catch (error) {
     console.error('Error fetching alumni:', error)
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
 const filteredAlumni = computed(() => {
-  return alumniList.value.filter(item => {
-    const nameMatch = item.name ? item.name.toLowerCase().includes(search.value.toLowerCase()) : false;
-    const yearMatch = item.graduation_year ? String(item.graduation_year).includes(search.value) : false;
-    const batchMatch = item.batch ? item.batch.toLowerCase().includes(search.value.toLowerCase()) : false;
-    
-    if (selectedYear.value && String(item.graduation_year) !== String(selectedYear.value)) {
-      return false
-    }
+  let result = alumniList.value
+  
+  if (selectedYear.value) {
+    result = result.filter(item => String(item.graduation_year) === String(selectedYear.value))
+  }
 
-    return nameMatch || yearMatch || batchMatch;
-  })
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(item => 
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.nis && item.nis.toLowerCase().includes(q)) ||
+      (item.batch && item.batch.toLowerCase().includes(q))
+    )
+  }
+  
+  return result
 })
 
-const handlePhotoUpload = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  if (target.files && target.files[0]) {
-    photoFile.value = target.files[0]
-    photoPreview.value = URL.createObjectURL(target.files[0])
+const openNewModal = () => {
+  isEditing.value = false
+  currentId.value = null
+  photoPreview.value = ''
+  photoFile.value = null
+  form.value = {
+    name: '', gender: 'L', nis: '', nik: '', birth_place: '', birth_date: '',
+    graduation_year: new Date().getFullYear().toString(), batch: '',
+    email: '', address: '', whatsapp: '', service_status: 'Tidak Mengabdi', photo: ''
   }
+  isModalOpen.value = true
 }
 
-const openModal = (mode = 'create', data: any = null) => {
-  modalMode.value = mode
-  if (mode === 'edit' && data) {
-    currentId.value = data.ID || data.id
-    form.value = { ...data, birth_date: data.birth_date ? data.birth_date.split('T')[0] : '' }
-    photoPreview.value = data.photo || null
-  } else {
-    currentId.value = null
-    form.value = {
-      name: '', gender: 'L', nis: '', nik: '', birth_place: '', birth_date: '',
-      graduation_year: new Date().getFullYear().toString(), batch: '',
-      email: '', address: '', whatsapp: '', service_status: 'Tidak Mengabdi', photo: ''
-    }
-    photoPreview.value = null
+const handleEdit = (alumni: any) => {
+  isEditing.value = true
+  currentId.value = alumni.ID || alumni.id
+  form.value = { 
+    ...alumni, 
+    birth_date: alumni.birth_date ? alumni.birth_date.split('T')[0] : '',
+    graduation_year: String(alumni.graduation_year)
   }
-  showModal.value = true
+  photoPreview.value = alumni.photo || ''
+  photoFile.value = null
+  isModalOpen.value = true
+}
+
+const triggerPhotoSelect = () => {
+  photoInput.value?.click()
+}
+
+const handlePhotoSelect = (event: any) => {
+  const file = event.target.files[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) {
+    alert('Foto terlalu besar (maks 2MB)')
+    return
+  }
+  photoFile.value = file
+  photoPreview.value = URL.createObjectURL(file)
+}
+
+const uploadPhoto = async (alumniId: number) => {
+  if (!photoFile.value) return
+  const formData = new FormData()
+  formData.append('photo', photoFile.value)
+  try {
+    await axios.post(`${API_URL}/${alumniId}/photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  } catch (err) {
+    console.error('Gagal upload foto:', err)
+  }
 }
 
 const handleSubmit = async () => {
   try {
-    let response
-    if (modalMode.value === 'create') {
-      response = await axios.post(API_URL, form.value)
+    isLoading.value = true
+    let alumniId: number
+    
+    if (isEditing.value && currentId.value) {
+      await axios.put(`${API_URL}/${currentId.value}`, form.value)
+      alumniId = currentId.value
     } else {
-      response = await axios.put(`${API_URL}/${currentId.value}`, form.value)
+      const res = await axios.post(API_URL, form.value)
+      alumniId = res.data.ID
     }
 
-    // Photo upload if selected
-    if (photoFile.value && response.data.ID) {
-      const photoFormData = new FormData()
-      photoFormData.append('photo', photoFile.value)
-      await axios.post(`${API_URL}/${response.data.ID}/photo`, photoFormData)
+    if (photoFile.value) {
+      await uploadPhoto(alumniId)
     }
 
-    showModal.value = false
-    fetchAlumni()
+    isModalOpen.value = false
+    await fetchAlumni()
   } catch (error: any) {
     console.error('Error saving alumni:', error)
-    alert('Gagal menyimpan data alumni: ' + (error.response?.data?.error || error.message))
+    alert('Gagal menyimpan data: ' + (error.response?.data?.error || error.message))
+  } finally {
+    isLoading.value = false
   }
 }
 
-const deleteAlumni = async (id: number) => {
-  if (confirm('Apakah Anda yakin ingin menghapus data alumni ini?')) {
-    try {
-      await axios.delete(`${API_URL}/${id}`)
-      fetchAlumni()
-    } catch (error) {
-      console.error('Error deleting alumni:', error)
-      alert('Gagal menghapus data')
-    }
+const handleDelete = async (id: number) => {
+  if (!confirm('Apakah Anda yakin ingin menghapus data alumni ini?')) return
+  try {
+    isLoading.value = true
+    await axios.delete(`${API_URL}/${id}`)
+    await fetchAlumni()
+  } catch (error) {
+    console.error('Error deleting alumni:', error)
+    alert('Gagal menghapus data')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -179,7 +219,9 @@ const exportToPDF = () => {
   autoTable(doc, {
     head: [['Nama', 'Tahun', 'Angkatan', 'Status', 'WhatsApp']],
     body: data,
-    startY: 20
+    startY: 20,
+    theme: 'grid',
+    headStyles: { fillColor: [16, 185, 129] }
   })
   doc.save(`Data_Alumni_${new Date().getFullYear()}.pdf`)
   showDataMenu.value = false
@@ -193,12 +235,10 @@ const downloadTemplate = () => {
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template")
   XLSX.writeFile(workbook, "Template_Import_Alumni.xlsx")
-  showDataMenu.value = false
 }
 
 const triggerImport = () => {
   fileInput.value?.click()
-  showDataMenu.value = false
 }
 
 const handleImport = async (event: any) => {
@@ -209,13 +249,12 @@ const handleImport = async (event: any) => {
   reader.onload = async (e) => {
     const data = new Uint8Array(e.target?.result as ArrayBuffer)
     const workbook = XLSX.read(data, { type: 'array' })
-    const firstSheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[firstSheetName]
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]]
     const rawData = XLSX.utils.sheet_to_json(worksheet)
     
     const formattedData = rawData.map((row: any) => ({
       name: row['Nama Lengkap'] || row['Nama'],
-      gender: row['L/P'] || row['Jenis Kelamin'] || row['Gender'] || 'L',
+      gender: row['L/P'] || row['Jenis Kelamin'] || 'L',
       nis: String(row['NIS'] || ''),
       nik: String(row['NIK'] || ''),
       graduation_year: String(row['Tahun Lulus'] || ''),
@@ -229,16 +268,15 @@ const handleImport = async (event: any) => {
     }))
 
     try {
-      loading.value = true
-      await Promise.all(formattedData.map((dataItem: any) => axios.post(API_URL, dataItem)))
+      isLoading.value = true
+      await axios.post(`${API_URL}/bulk`, formattedData)
       await fetchAlumni()
       alert('Import berhasil!')
     } catch (err: any) {
       console.error('Import gagal:', err)
-      alert('Gagal mengimpor data. Pastikan NIS/NIK tidak duplikat.')
+      alert('Gagal mengimpor data. Periksa format file Anda.')
     } finally {
-      loading.value = false
-      if (fileInput.value) fileInput.value.value = ''
+      isLoading.value = false
     }
   }
   reader.readAsArrayBuffer(file)
@@ -248,12 +286,10 @@ onMounted(fetchAlumni)
 </script>
 
 <template>
-  <div class="flex h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans selection:bg-sigma-emerald/30">
-    <SigmabaseSidebar activeItem="Data Alumni" />
-
-    <main class="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+  <div class="flex flex-col">
+    <div class="flex-1 flex flex-col">
       <!-- Sticky Header Container -->
-      <div class="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl border-b border-slate-800/60 px-8 py-6 space-y-6 shadow-sm">
+      <div class="sticky top-0 z-40 bg-sigma-app/80 backdrop-blur-xl border-b border-sigma-border px-8 py-6 space-y-6 shadow-sm">
         <!-- Page Title & Stats -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div class="flex items-center gap-3">
@@ -262,11 +298,11 @@ onMounted(fetchAlumni)
             </div>
             <div>
               <h2 class="text-3xl font-black tracking-tight italic">DATABASE <span class="text-sigma-emerald not-italic uppercase text-2xl">ALUMNI</span></h2>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 hidden md:block">Database Lulusan & Pengabdian</p>
+              <p class="text-[10px] text-sigma-muted font-bold uppercase tracking-widest mt-1 hidden md:block">Database Lulusan & Pengabdian</p>
             </div>
           </div>
 
-          <div class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] px-4 py-2 bg-slate-900 rounded-full border border-slate-800 hidden lg:block">
+          <div class="text-[10px] text-sigma-muted font-bold uppercase tracking-[0.2em] px-4 py-2 bg-sigma-surface-alt rounded-full border border-sigma-border hidden lg:block">
             Verified: {{ filteredAlumni.length }} alumni
           </div>
         </div>
@@ -274,13 +310,14 @@ onMounted(fetchAlumni)
         <div class="flex flex-col lg:flex-row gap-4 items-center">
           <!-- Search Input -->
           <div class="relative flex-1 w-full lg:w-auto">
-            <Search class="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input type="file" ref="fileInput" class="hidden" accept=".xlsx, .xls" @change="handleImport" />
+            <Search class="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-sigma-muted" />
             <input 
-              v-model="search"
+              v-model="searchQuery"
               type="text" 
               placeholder="Cari nama alumni, angkatan, atau tahun lulus..."
-              class="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-900 border border-slate-800 focus:border-sigma-emerald outline-none transition-all placeholder:text-slate-500 text-sm font-medium"
-            >
+              class="w-full pl-14 pr-6 py-4 rounded-2xl bg-sigma-surface border border-sigma-border focus:border-sigma-emerald outline-none transition-all placeholder:text-sigma-muted/50 text-sm font-medium"
+            />
           </div>
           
           <!-- Consolidated Utilities -->
@@ -289,48 +326,46 @@ onMounted(fetchAlumni)
             <div class="relative year-dropdown-container">
               <button 
                 @click.stop="isYearDropdownOpen = !isYearDropdownOpen"
-                class="flex items-center gap-4 pl-6 pr-10 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-xs font-bold uppercase tracking-widest hover:border-sigma-emerald/50 transition-all shadow-sm text-slate-300 min-w-[180px] justify-between group"
+                class="flex items-center gap-4 pl-6 pr-10 py-4 bg-sigma-surface border border-sigma-border rounded-2xl text-xs font-bold uppercase tracking-widest hover:border-sigma-emerald/50 transition-all shadow-sm text-sigma-text min-w-[180px] justify-between group"
               >
                 <div class="flex items-center gap-3">
-                  <Filter class="w-4 h-4 text-slate-500 group-hover:text-sigma-emerald transition-colors" />
+                  <Filter class="w-4 h-4 text-sigma-muted group-hover:text-sigma-emerald transition-colors" />
                   <span>{{ selectedYear ? 'Tahun ' + selectedYear : 'Semua Tahun' }}</span>
                 </div>
-                <div class="w-1 h-1 rounded-full bg-slate-500"></div>
+                <div class="w-1 h-1 rounded-full bg-sigma-muted"></div>
               </button>
 
-              <div v-if="isYearDropdownOpen" class="absolute top-full left-0 mt-3 w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div v-if="isYearDropdownOpen" class="absolute top-full left-0 mt-3 w-full bg-sigma-surface border border-sigma-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <div class="max-h-60 overflow-y-auto custom-scrollbar">
-                  <button @click="selectedYear = ''; isYearDropdownOpen = false" class="w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest hover:bg-sigma-emerald/10 hover:text-sigma-emerald transition-all border-b border-slate-800" :class="selectedYear === '' ? 'text-sigma-emerald bg-sigma-emerald/5' : 'text-slate-400'">Semua Tahun</button>
-                  <button v-for="year in uniqueYears" :key="year" @click="selectedYear = year as string; isYearDropdownOpen = false" class="w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest hover:bg-sigma-emerald/10 hover:text-sigma-emerald transition-all border-b border-slate-800 last:border-0" :class="selectedYear === year ? 'text-sigma-emerald bg-sigma-emerald/5' : 'text-slate-400'">Tahun {{ year }}</button>
+                  <button @click="selectedYear = ''; isYearDropdownOpen = false" class="w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest hover:bg-sigma-emerald/10 hover:text-sigma-emerald transition-all border-b border-sigma-border" :class="selectedYear === '' ? 'text-sigma-emerald bg-sigma-emerald/5' : 'text-sigma-muted'">Semua Tahun</button>
+                  <button v-for="year in uniqueYears" :key="year" @click="selectedYear = year as string; isYearDropdownOpen = false" class="w-full text-left px-6 py-4 text-xs font-bold uppercase tracking-widest hover:bg-sigma-emerald/10 hover:text-sigma-emerald transition-all border-b border-sigma-border last:border-0" :class="selectedYear === year ? 'text-sigma-emerald bg-sigma-emerald/5' : 'text-sigma-muted'">Tahun {{ year }}</button>
                 </div>
               </div>
             </div>
 
-            <input type="file" ref="fileInput" class="hidden" accept=".xlsx, .xls" @change="handleImport" />
-            
-            <!-- Data Operations Dropdown -->
+            <!-- Data Operations -->
             <div class="relative data-menu-container">
               <button 
                 @click.stop="showDataMenu = !showDataMenu"
-                class="flex items-center gap-2 px-6 py-4 bg-slate-900 border border-slate-800 rounded-2xl hover:bg-slate-800 transition-all text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-slate-200 shadow-sm"
+                class="flex items-center gap-2 px-6 py-4 bg-sigma-surface border border-sigma-border rounded-2xl hover:bg-sigma-surface-alt transition-all text-xs font-bold uppercase tracking-widest text-sigma-muted hover:text-sigma-text shadow-sm"
               >
                 <Download class="w-4 h-4 text-sigma-emerald" /> Export/Import
               </button>
               
-              <div v-if="showDataMenu" class="absolute right-0 mt-3 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                <div class="p-2 border-b border-slate-800 bg-slate-800/30">
+              <div v-if="showDataMenu" class="absolute right-0 mt-3 w-56 bg-sigma-surface dark:bg-slate-900 border border-sigma-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div class="p-2 border-b border-sigma-border bg-sigma-surface-alt/30">
                   <button @click="downloadTemplate" class="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-sigma-emerald hover:bg-sigma-emerald/10 rounded-xl transition-all"><Download class="w-4 h-4" /> Template Excel</button>
-                  <button @click="triggerImport" class="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl transition-all mt-1"><Upload class="w-4 h-4" /> Import Data</button>
+                  <button @click="triggerImport" class="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-sigma-muted hover:bg-sigma-surface-alt hover:text-sigma-text rounded-xl transition-all mt-1"><Upload class="w-4 h-4" /> Import Data</button>
                 </div>
                 <div class="p-2">
-                  <button @click="exportToExcel" class="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-slate-800 hover:text-sigma-emerald rounded-xl transition-all"><FileSpreadsheet class="w-4 h-4" /> Export Excel</button>
-                  <button @click="exportToPDF" class="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:bg-slate-800 hover:text-rose-500 rounded-xl transition-all mt-1"><FileText class="w-4 h-4" /> Laporan PDF</button>
+                  <button @click="exportToExcel" class="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-sigma-muted hover:bg-sigma-surface-alt hover:text-sigma-emerald rounded-xl transition-all"><FileSpreadsheet class="w-4 h-4" /> Export Excel</button>
+                  <button @click="exportToPDF" class="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-sigma-muted hover:bg-sigma-surface-alt hover:text-red-400 rounded-xl transition-all mt-1"><FileText class="w-4 h-4" /> Laporan PDF</button>
                 </div>
               </div>
             </div>
 
-            <button @click="openModal('create')" class="flex items-center gap-2 px-8 py-4 bg-sigma-emerald text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-emerald-600 transition-all shadow-xl shadow-sigma-emerald/20">
-              <Plus class="w-4 h-4" /> Tambah
+            <button @click="openNewModal" class="flex items-center gap-2 px-8 py-4 bg-sigma-emerald text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-emerald-600 transition-all shadow-xl shadow-sigma-emerald/20">
+              <Plus class="w-4 h-4" /> Tambah Alumni
             </button>
           </div>
         </div>
@@ -339,230 +374,264 @@ onMounted(fetchAlumni)
       <!-- Main Content Scrolling Area -->
       <div class="p-8 space-y-10">
         <!-- Alumni Table -->
-        <div class="bg-slate-900/40 border border-slate-800/60 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-sm">
+        <div class="bg-sigma-surface border border-sigma-border rounded-[2.5rem] overflow-hidden shadow-sm">
           <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-800/20 border-b border-slate-800/60">
-                <th class="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-widest">Identitas Alumni</th>
-                <th class="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Tahun Lulus</th>
-                <th class="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Angkatan</th>
-                <th class="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-widest">Status Pengabdian</th>
-                <th class="px-8 py-5 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-800/40">
-              <tr v-for="alumni in filteredAlumni" :key="alumni.ID || alumni.id" class="hover:bg-slate-800/20 transition-colors group">
-                <td class="px-8 py-5">
-                  <div class="flex items-center gap-5">
-                    <div class="w-14 h-14 rounded-xl overflow-hidden bg-slate-800 ring-4 ring-slate-800/30">
-                      <img v-if="alumni.photo" :src="alumni.photo" class="w-full h-full object-cover" />
-                      <div v-else class="w-full h-full flex items-center justify-center text-slate-600">
-                        <Users class="w-6 h-6" />
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="text-[10px] text-sigma-muted uppercase tracking-[0.3em] bg-sigma-surface-alt">
+                  <th class="p-8 border-b border-sigma-border">Identitas Alumni</th>
+                  <th class="p-8 border-b border-sigma-border text-center">Tahun Lulus</th>
+                  <th class="p-8 border-b border-sigma-border text-center">Angkatan</th>
+                  <th class="p-8 border-b border-sigma-border">Status Pengabdian</th>
+                  <th class="p-8 border-b border-sigma-border text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-sigma-border">
+                <tr v-for="alumni in filteredAlumni" :key="alumni.ID || alumni.id" class="hover:bg-sigma-surface-alt transition-colors group">
+                  <td class="p-8">
+                    <div class="flex items-center gap-5">
+                      <div class="w-14 h-16 rounded-2xl bg-sigma-surface-alt border border-sigma-border flex items-center justify-center overflow-hidden shadow-sm group-hover:scale-110 transition-transform">
+                        <img v-if="alumni.photo" :src="alumni.photo" class="w-full h-full object-cover" />
+                        <div v-else class="font-black text-sigma-emerald text-xl uppercase">
+                          {{ alumni.name.charAt(0) }}
+                        </div>
+                      </div>
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <span class="font-bold text-sigma-text text-lg group-hover:text-sigma-emerald transition-colors leading-tight">{{ alumni.name }}</span>
+                          <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest" 
+                                :class="alumni.gender === 'L' ? 'bg-blue-500/10 text-blue-500' : 'bg-pink-500/10 text-pink-500'">
+                            {{ alumni.gender }}
+                          </span>
+                        </div>
+                        <div class="text-[10px] font-mono text-sigma-muted space-y-0.5 mt-2">
+                          <div class="flex items-center gap-2">
+                            <span class="w-8 opacity-50 uppercase tracking-tighter">NIS:</span>
+                            <span class="px-1.5 py-0.5 rounded-md bg-sigma-surface border border-sigma-border text-sigma-text/80">{{ alumni.nis || '-' }}</span>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <span class="w-8 opacity-50 uppercase tracking-tighter">NIK:</span>
+                            <span class="text-sigma-text/60">{{ alumni.nik || '-' }}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div class="space-y-1">
-                      <div class="flex items-center gap-2">
-                        <span class="font-bold text-white tracking-tight text-lg">{{ alumni.name }}</span>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider" 
-                              :class="alumni.gender === 'L' ? 'bg-blue-500/10 text-blue-500' : 'bg-pink-500/10 text-pink-500'">
-                          {{ alumni.gender }}
-                        </span>
-                        <span v-if="alumni.nik" class="px-2 py-0.5 rounded bg-sigma-emerald/10 text-sigma-emerald text-[9px] font-black uppercase tracking-tighter border border-sigma-emerald/20">
-                          NIK: {{ alumni.nik }}
-                        </span>
-                      </div>
-                      <div class="flex items-center gap-4 text-xs font-medium text-slate-400">
-                        <span class="flex items-center gap-1.5"><Mail class="w-3.5 h-3.5 text-sigma-emerald" /> {{ alumni.email || '-' }}</span>
-                        <span class="flex items-center gap-1.5"><Phone class="w-3.5 h-3.5 text-emerald-400" /> {{ alumni.whatsapp || '-' }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-8 py-5">
-                   <div class="flex flex-col items-center">
-                    <span class="px-4 py-1.5 bg-slate-800/50 rounded-full text-sm font-bold text-white border border-slate-700/30">
+                  </td>
+                  <td class="p-8 text-center">
+                    <span class="inline-block px-4 py-2 rounded-xl bg-sigma-surface-alt border border-sigma-border font-black text-sm text-sigma-muted group-hover:text-sigma-text transition-all">
                       {{ alumni.graduation_year }}
                     </span>
-                  </div>
-                </td>
-                <td class="px-8 py-5">
-                  <div class="flex flex-col items-center">
-                    <span class="text-xs font-black text-sigma-emerald tracking-widest uppercase">{{ alumni.batch || 'GENERAL' }}</span>
-                  </div>
-                </td>
-                <td class="px-8 py-5">
-                  <div class="flex flex-col">
-                    <span class="text-sm font-bold" 
-                          :class="alumni.service_status === 'Mengabdi' ? 'text-emerald-400' : alumni.service_status === 'Tidak Mengabdi' ? 'text-slate-400' : 'text-amber-400'">
-                      {{ alumni.service_status }}
+                  </td>
+                  <td class="p-8 text-center">
+                    <span class="inline-block px-4 py-2 rounded-xl bg-sigma-surface-alt border border-sigma-border font-black text-xs text-sigma-muted group-hover:text-sigma-text transition-all uppercase tracking-widest">
+                      {{ alumni.batch || 'GENERAL' }}
                     </span>
-                    <span class="text-[10px] text-slate-500 uppercase tracking-tighter">{{ alumni.address?.substring(0, 30) }}...</span>
-                  </div>
-                </td>
-                <td class="px-8 py-5 text-center">
-                  <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button @click="openModal('edit', alumni)" class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-colors" title="Edit">
-                      <Edit class="w-4 h-4" />
-                    </button>
-                    <button @click="deleteAlumni(alumni.ID || alumni.id)" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-colors" title="Delete">
-                      <Trash2 class="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      </div>
-    </main>
-
-    <!-- Modal Alumni -->
-    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm bg-black/60">
-      <div class="bg-slate-900 border border-slate-800 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl">
-        <div class="px-8 py-6 bg-slate-800/50 border-b border-slate-800 flex items-center justify-between">
-          <h2 class="text-2xl font-black text-white uppercase italic italic-sigma">
-            {{ modalMode === 'create' ? 'TAMBAH' : 'EDIT' }} <span class="text-sigma-emerald">ALUMNI</span>
-          </h2>
-          <button @click="showModal = false" class="p-2 hover:bg-slate-700/50 rounded-lg transition-colors text-slate-400">
-            <X class="w-6 h-6" />
-          </button>
-        </div>
-
-        <div class="p-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Identity Section -->
-            <div class="space-y-6">
-              <h3 class="text-xs font-black text-sigma-emerald tracking-widest uppercase mb-4 py-1 border-b border-sigma-emerald/20">Identitas Pribadi</h3>
-              
-              <div class="space-y-2">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Nama Lengkap</label>
-                <input v-model="form.name" type="text" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all" placeholder="Nama Alumni...">
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Jenis Kelamin</label>
-                  <select v-model="form.gender" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all">
-                    <option value="L">Laki-laki</option>
-                    <option value="P">Perempuan</option>
-                  </select>
-                </div>
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">NIK</label>
-                  <input v-model="form.nik" type="text" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all" placeholder="NIK Nasional...">
-                </div>
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">NIS</label>
-                  <input v-model="form.nis" type="text" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all" placeholder="NIS...">
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Tempat Lahir</label>
-                  <input v-model="form.birth_place" type="text" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all" placeholder="Kota...">
-                </div>
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Tanggal Lahir</label>
-                  <input v-model="form.birth_date" type="date" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all">
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Alamat Domisili</label>
-                <textarea v-model="form.address" rows="3" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all resize-none" placeholder="Alamat lengkap..."></textarea>
-              </div>
-            </div>
-
-            <!-- Academic & Contact Section -->
-            <div class="space-y-6">
-              <h3 class="text-xs font-black text-sigma-emerald tracking-widest uppercase mb-4 py-1 border-b border-sigma-emerald/20">Lulusan & Kontak</h3>
-              
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Tahun Lulus</label>
-                  <input v-model="form.graduation_year" type="number" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all">
-                </div>
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Angkatan (Batch)</label>
-                  <input v-model="form.batch" type="text" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all" placeholder="Nama Angkatan...">
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Status Pengabdian</label>
-                <select v-model="form.service_status" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all">
-                  <option value="Tidak Mengabdi">Tidak Mengabdi</option>
-                  <option value="Mengabdi">Mengabdi</option>
-                  <option value="Lainnya">Lainnya</option>
-                </select>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Email</label>
-                  <input v-model="form.email" type="email" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all" placeholder="example@mail.com">
-                </div>
-                <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">WhatsApp</label>
-                  <input v-model="form.whatsapp" type="text" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-sigma-emerald outline-none transition-all" placeholder="08...">
-                </div>
-              </div>
-
-              <!-- Photo Upload -->
-              <div class="space-y-2">
-                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Foto Alumni</label>
-                <div class="flex items-center gap-4 p-4 bg-slate-950 border border-dashed border-slate-800 rounded-2xl">
-                  <div class="w-20 h-20 rounded-xl bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-800">
-                    <img v-if="photoPreview" :src="photoPreview" class="w-full h-full object-cover">
-                    <div v-else class="w-full h-full flex items-center justify-center text-slate-700">
-                      <Camera class="w-8 h-8" />
+                  </td>
+                  <td class="p-8">
+                    <div class="space-y-1">
+                      <span class="text-sm font-bold" 
+                            :class="alumni.service_status === 'Mengabdi' ? 'text-sigma-emerald' : alumni.service_status === 'Tidak Mengabdi' ? 'text-sigma-muted' : 'text-amber-400'">
+                        {{ alumni.service_status }}
+                      </span>
+                      <div class="flex flex-col gap-1 mt-1">
+                        <div class="flex items-center gap-2 text-[10px] font-bold text-sigma-muted uppercase tracking-tight">
+                          <Mail class="w-3 h-3" /> {{ alumni.email || '-' }}
+                        </div>
+                        <div class="flex items-center gap-2 text-[10px] font-bold text-sigma-muted uppercase tracking-tight">
+                          <Phone class="w-3 h-3" /> {{ alumni.whatsapp || '-' }}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div class="space-y-1">
-                    <label class="cursor-pointer px-4 py-1.5 bg-sigma-emerald/10 hover:bg-sigma-emerald/20 text-sigma-emerald rounded-lg text-xs font-bold border border-sigma-emerald/20 transition-all inline-block">
-                      <Upload class="w-3.5 h-3.5 inline mr-1" /> UPLOAD FOTO
-                      <input type="file" @change="handlePhotoUpload" accept="image/*" class="hidden">
-                    </label>
-                    <p class="text-[10px] text-slate-500">Maksimal 2MB (JPG/PNG)</p>
-                  </div>
-                </div>
+                  </td>
+                  <td class="p-8 text-right">
+                    <div class="flex justify-end gap-3 translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-500">
+                      <button @click="handleEdit(alumni)" class="p-3 bg-sigma-surface border border-sigma-border hover:bg-sigma-emerald text-sigma-muted hover:text-white rounded-xl transition-all shadow-md hover:shadow-sigma-emerald/20"><Edit class="w-4 h-4" /></button>
+                      <button @click="handleDelete(alumni.ID || alumni.id)" class="p-3 bg-sigma-surface border border-sigma-border hover:bg-red-500 text-sigma-muted hover:text-white rounded-xl transition-all shadow-md hover:shadow-red-500/20"><Trash2 class="w-4 h-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="filteredAlumni.length === 0" class="p-20 text-center space-y-4">
+              <div class="w-20 h-20 bg-sigma-surface-alt rounded-full flex items-center justify-center mx-auto">
+                <Search class="w-10 h-10 text-sigma-muted/20" />
               </div>
+              <p class="text-sigma-muted font-bold uppercase tracking-widest text-sm">Tidak ada alumni yang cocok dengan pencarian Anda.</p>
             </div>
           </div>
         </div>
-
-        <div class="px-8 py-6 bg-slate-800/30 border-t border-slate-800 flex justify-end gap-3">
-          <button @click="showModal = false" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition-all border border-slate-700/50">
-            BATAL
-          </button>
-          <button @click="handleSubmit" class="px-8 py-2.5 bg-gradient-to-r from-sigma-emerald to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 text-white rounded-xl shadow-lg shadow-sigma-emerald/20 font-black text-sm transition-all">
-            SIMPAN DATA
-          </button>
-        </div>
       </div>
+
+      <!-- Registration Modal -->
+      <Transition name="fade">
+        <div v-if="isModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-sigma-app/80 backdrop-blur-md" @click="isModalOpen = false"></div>
+          
+          <div class="bg-sigma-surface w-full max-w-4xl rounded-[3rem] border border-sigma-border relative z-10 overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500">
+            <!-- Modal Header -->
+            <div class="p-10 pb-6 border-b border-sigma-border flex justify-between items-start bg-gradient-to-br from-sigma-surface-alt to-transparent">
+              <div>
+                <div class="flex items-center gap-3 mb-3">
+                  <span class="px-3 py-1 rounded-full bg-sigma-emerald text-white text-[10px] font-black uppercase tracking-[0.2em]">{{ isEditing ? 'Update' : 'New Archive' }}</span>
+                </div>
+                <h3 class="text-3xl font-black text-sigma-text italic uppercase tracking-tight">{{ isEditing ? 'Edit' : 'Tambah' }} <span class="text-sigma-emerald not-italic uppercase">Alumni</span></h3>
+                <p class="text-sigma-muted text-sm mt-1 uppercase font-bold tracking-widest">Sigmabase Module / Alumni Central</p>
+              </div>
+              <button @click="isModalOpen = false" class="p-3 bg-sigma-surface-alt hover:bg-sigma-emerald/10 rounded-full transition-all text-sigma-muted hover:text-sigma-emerald">
+                <X class="w-6 h-6" />
+              </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-10 max-h-[65vh] overflow-y-auto custom-scrollbar">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Section: Identity with Photo -->
+                <div class="md:col-span-2 flex items-center gap-8 mb-6 bg-sigma-surface-alt/50 p-6 rounded-[2rem] border border-sigma-border">
+                  <div class="relative group">
+                    <input type="file" ref="photoInput" class="hidden" accept="image/*" @change="handlePhotoSelect" />
+                    <div 
+                      @click="triggerPhotoSelect"
+                      class="w-32 h-40 rounded-2xl border-2 border-dashed border-sigma-border flex flex-col items-center justify-center gap-2 cursor-pointer group-hover:border-sigma-emerald transition-all overflow-hidden bg-sigma-surface"
+                    >
+                      <img v-if="photoPreview" :src="photoPreview" class="w-full h-full object-cover" />
+                      <template v-else>
+                        <Camera class="w-8 h-8 text-sigma-muted group-hover:text-sigma-emerald" />
+                        <span class="text-[9px] font-black uppercase tracking-tighter text-sigma-muted">Upload Photo</span>
+                      </template>
+                    </div>
+                  </div>
+
+                  <div class="flex-1 space-y-4">
+                    <div class="flex items-center gap-4 mb-2">
+                      <span class="text-xs font-black uppercase tracking-[0.2em] text-sigma-emerald">Biodata Alumni</span>
+                      <div class="h-[1px] flex-1 bg-sigma-border"></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="space-y-2">
+                        <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Nama Lengkap</label>
+                        <input v-model="form.name" type="text" placeholder="Entry Full Name" class="w-full p-4 rounded-2xl bg-sigma-surface border border-sigma-border focus:border-sigma-emerald outline-none transition-all placeholder:text-sigma-muted/30 text-sm font-bold text-sigma-text" />
+                      </div>
+                      <div class="space-y-2">
+                        <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Jenis Kelamin</label>
+                        <div class="flex gap-6 p-4">
+                          <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="radio" v-model="form.gender" value="L" class="hidden" />
+                            <div class="w-5 h-5 rounded-full border-2 border-sigma-border flex items-center justify-center" :class="{'border-sigma-emerald bg-sigma-emerald/20': form.gender === 'L'}">
+                              <div v-if="form.gender === 'L'" class="w-2 h-2 rounded-full bg-sigma-emerald"></div>
+                            </div>
+                            <span class="text-sm font-bold">L</span>
+                          </label>
+                          <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="radio" v-model="form.gender" value="P" class="hidden" />
+                            <div class="w-5 h-5 rounded-full border-2 border-sigma-border flex items-center justify-center" :class="{'border-pink-500 bg-pink-500/20': form.gender === 'P'}">
+                              <div v-if="form.gender === 'P'" class="w-2 h-2 rounded-full bg-pink-500"></div>
+                            </div>
+                            <span class="text-sm font-bold">P</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Nomor Induk (NIS)</label>
+                  <input v-model="form.nis" type="text" placeholder="NIS" class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all placeholder:text-sigma-muted/30 text-sm font-mono font-bold text-sigma-text" />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">NIK (Nomor Induk Kependudukan)</label>
+                  <input v-model="form.nik" type="text" placeholder="NIK 16 Digit" class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all placeholder:text-sigma-muted/30 text-sm font-mono font-bold text-sigma-text" />
+                </div>
+                <div class="space-y-2">
+                   <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Tempat & Tanggal Lahir</label>
+                   <div class="grid grid-cols-2 gap-3">
+                     <input v-model="form.birth_place" type="text" placeholder="City" class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all text-sm font-bold text-sigma-text" />
+                     <input v-model="form.birth_date" type="date" class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all dark:[color-scheme:dark] text-sm font-bold text-sigma-text" />
+                   </div>
+                </div>
+
+                <!-- Academic Section -->
+                <div class="md:col-span-2 flex items-center gap-4 mt-4 mb-2">
+                  <span class="text-xs font-black uppercase tracking-[0.2em] text-sigma-emerald">Data Kelulusan</span>
+                  <div class="h-[1px] flex-1 bg-sigma-border"></div>
+                </div>
+
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Tahun Lulus</label>
+                  <input v-model="form.graduation_year" type="number" placeholder="2024" class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all text-sm font-bold text-sigma-text" />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Angkatan (Batch)</label>
+                  <input v-model="form.batch" type="text" placeholder="Ex: Generation of Light" class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all text-sm font-bold text-sigma-text" />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Status Pengabdian</label>
+                  <div class="relative group">
+                    <select v-model="form.service_status" class="w-full p-4 pr-12 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all text-sm font-bold text-sigma-text appearance-none cursor-pointer hover:border-sigma-emerald/30">
+                      <option value="Tidak Mengabdi" class="bg-slate-900 text-white">Tidak Mengabdi</option>
+                      <option value="Mengabdi" class="bg-slate-900 text-white">Mengabdi</option>
+                      <option value="Lainnya" class="bg-slate-900 text-white">Lainnya</option>
+                    </select>
+                    <Download class="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-sigma-muted rotate-90 pointer-events-none group-hover:text-sigma-emerald transition-colors" />
+                  </div>
+                </div>
+
+                <!-- Section: Contact -->
+                <div class="md:col-span-2 flex items-center gap-4 mt-4 mb-2">
+                  <span class="text-xs font-black uppercase tracking-[0.2em] text-sigma-emerald">Kontak Terkini</span>
+                  <div class="h-[1px] flex-1 bg-sigma-border"></div>
+                </div>
+
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Alamat Email</label>
+                  <input v-model="form.email" type="email" placeholder="alumni@sigma.com" class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all text-sm font-bold text-sigma-text" />
+                </div>
+                <div class="space-y-2">
+                  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Nomor WhatsApp</label>
+                  <input v-model="form.whatsapp" type="text" placeholder="08xxxxxxxxxx" class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all text-sm font-bold text-sigma-text" />
+                </div>
+                <div class="md:col-span-2 space-y-2">
+                  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-sigma-muted ml-1">Alamat Domisili</label>
+                  <textarea v-model="form.address" rows="2" placeholder="Street, City, Province..." class="w-full p-4 rounded-2xl bg-sigma-surface-alt border border-sigma-border focus:border-sigma-emerald outline-none transition-all resize-none text-sm font-bold text-sigma-text"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-10 pt-6 border-t border-sigma-border bg-gradient-to-br from-transparent to-sigma-surface-alt flex gap-4">
+              <button @click="isModalOpen = false" :disabled="isLoading" class="flex-1 py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs bg-sigma-surface-alt hover:bg-sigma-emerald/10 transition-all text-sigma-muted hover:text-sigma-emerald disabled:opacity-50">
+                Cancel
+              </button>
+              <button @click="handleSubmit" :disabled="isLoading" class="flex-1 [flex-grow:2] py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs bg-sigma-emerald hover:bg-emerald-600 transition-all shadow-xl shadow-sigma-emerald/20 disabled:opacity-50 text-white">
+                {{ isLoading ? 'Syncing...' : 'Simpan Data Alumni' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </div>
   </div>
 </template>
 
 <style scoped>
-.italic-sigma {
-  transform: skewX(-10deg);
-}
-
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>
