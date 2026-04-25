@@ -27,4 +27,5 @@ type Student struct {
 	TotalViolationPoints   int        `gorm:"default:0" json:"total_violation_points"` // Added for discipline summary
 	Password               *string    `gorm:"type:string" json:"-"` // Added for Sigmagate login
 	IsActive               bool       `gorm:"default:true" json:"is_active"` // Added for archiving (graduation)
+	AvatarURL              *string    `json:"avatar_url,omitempty"`
 }

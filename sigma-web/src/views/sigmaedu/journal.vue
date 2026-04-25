@@ -352,13 +352,13 @@ const formatDate = (dateStr: string) => {
       
       <!-- Stepper Progress -->
       <div class="flex items-center justify-between mb-12 relative px-4">
-        <div class="absolute top-1/2 left-0 w-full h-1 bg-sigma-border -translate-y-1/2 z-0"></div>
-        <div class="absolute top-1/2 left-0 h-1 bg-emerald-500 -translate-y-1/2 z-0 transition-all duration-500"
+        <div class="absolute top-1/2 left-0 w-full h-1 bg-slate-300/50 -translate-y-1/2 z-0"></div>
+        <div class="absolute top-1/2 left-0 h-1 bg-emerald-500 -translate-y-1/2 z-0 transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
              :style="{ width: ((currentStep - 1) / 2) * 100 + '%' }"></div>
         
         <div v-for="s in 3" :key="s" class="relative z-10 flex flex-col items-center">
-            <div class="w-12 h-12 rounded-full border-4 flex items-center justify-center font-black transition-all duration-500"
-                 :class="currentStep >= s ? 'bg-emerald-500 border-sigma-bg text-white shadow-lg scale-110' : 'bg-sigma-bg border-sigma-border text-sigma-muted'">
+            <div class="w-12 h-12 rounded-full border-2 flex items-center justify-center font-black transition-all duration-500"
+                 :class="currentStep >= s ? 'bg-emerald-500 border-white text-white shadow-xl scale-110' : 'bg-white border-slate-300 text-slate-400'">
                 {{ s }}
             </div>
             <span class="absolute -bottom-8 whitespace-nowrap text-[9px] font-black uppercase tracking-widest text-sigma-muted"

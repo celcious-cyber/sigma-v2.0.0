@@ -6,9 +6,6 @@ import {
   Check, X, Building2, ChevronRight, Eye
 } from 'lucide-vue-next'
 import axios from 'axios'
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
 
 // State
 const schedules = ref<any[]>([])

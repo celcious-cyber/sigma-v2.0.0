@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import SigmaeduSidebar from '../components/SigmaeduSidebar.vue'
+import GlobalNavbar from '../components/GlobalNavbar.vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -15,17 +16,20 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-sigma-app text-sigma-text overflow-hidden font-sans transition-colors duration-300">
+  <div class="flex h-screen bg-[#E0E7FF] text-sigma-text overflow-hidden font-sans transition-colors duration-300">
     <SigmaeduSidebar />
     
     <!-- Using a key on router-view can help with transitions, but for the layout itself, 
          not including the sidebar inside the router-view is what prevents the 'bounce' -->
-    <main class="flex-1 overflow-y-auto custom-scrollbar">
-      <router-view v-slot="{ Component }">
-        <transition name="fade-slide" mode="out-in">
-          <component :is="Component" :key="route.path" />
-        </transition>
-      </router-view>
+    <main class="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+      <GlobalNavbar moduleName="SigmaEdu" />
+      <div class="flex-1">
+        <router-view v-slot="{ Component }">
+          <transition name="fade-slide" mode="out-in">
+            <component :is="Component" :key="route.path" />
+          </transition>
+        </router-view>
+      </div>
     </main>
   </div>
 </template>

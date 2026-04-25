@@ -10,7 +10,7 @@ import (
 
 type EduService interface {
 	// Dashboard Stats
-	GetStats() (map[string]interface{}, error)
+	GetStats(filter string) (map[string]interface{}, error)
 	// Subjects
 	GetAllSubjects() ([]models.Subject, error)
 	CreateSubject(s *models.Subject) error
@@ -84,21 +84,356 @@ func NewEduService(db *gorm.DB) EduService {
 	return &eduService{db}
 }
 
-func (s *eduService) GetStats() (map[string]interface{}, error) {
+func (s *eduService) GetStats(filter string) (map[string]interface{}, error) {
 	var totalSubjects int64
 	var totalSchedules int64
-	var totalAttendanceToday int64
-
+	var totalStudents int64
+	var totalClassrooms int64
+	
 	s.db.Model(&models.Subject{}).Count(&totalSubjects)
 	s.db.Model(&models.TeacherSchedule{}).Count(&totalSchedules)
+	s.db.Model(&models.Student{}).Count(&totalStudents)
+	s.db.Model(&models.Classroom{}).Count(&totalClassrooms)
 	
-	today := time.Now().Truncate(24 * time.Hour)
-	s.db.Model(&models.Attendance{}).Where("date >= ?", today).Count(&totalAttendanceToday)
+	now := time.Now()
+	today := now.Truncate(24 * time.Hour)
+	tomorrow := today.Add(24 * time.Hour)
+	
+	// Chart Data Aggregation
+	
+	// Helper to generate dates range
+	// Helper to generate dates range
+	getDates := func(n int) []time.Time {
+		dts := make([]time.Time, n)
+		for i := 0; i < n; i++ {
+			dts[i] = now.AddDate(0, 0, -n+1+i).Truncate(24 * time.Hour)
+		}
+		return dts
+	}
+
+	// 1. Quran Chart Data (Multi-Class)
+	quranChart := map[string]interface{}{}
+	var quranLabels []string
+	var quranDatasets []map[string]interface{}
+	
+	// Get all classrooms to create separate datasets
+	var classrooms []models.Classroom
+	s.db.Find(&classrooms)
+	
+	colors := []string{"emerald", "pink", "blue", "indigo", "amber", "rose", "cyan", "teal"}
+
+	if filter == "month" {
+		quranLabels = []string{"W1", "W2", "W3", "W4"}
+		for i, cls := range classrooms {
+			dataset := map[string]interface{}{
+				"label":      cls.Name,
+				"color_code": colors[i%len(colors)],
+				"data":       make([]int64, 4),
+			}
+			
+			var results []struct {
+				Week  int
+				Count int64
+			}
+			s.db.Model(&models.QuranMemorization{}).
+				Select("((strftime('%d', quran_memorizations.date) - 1) / 7) as week, count(*) as count").
+				Joins("JOIN students ON students.id = quran_memorizations.student_id").
+				Where("students.classroom_id = ? AND quran_memorizations.date >= ? AND quran_memorizations.date < ?", cls.ID, today.AddDate(0, -1, 0), tomorrow).
+				Group("week").Scan(&results)
+			
+			dataArr := make([]int64, 4)
+			for _, r := range results {
+				if r.Week >= 0 && r.Week < 4 {
+					dataArr[r.Week] = r.Count
+				}
+			}
+			dataset["data"] = dataArr
+			quranDatasets = append(quranDatasets, dataset)
+		}
+	} else {
+		dts := getDates(7)
+		quranLabels = make([]string, 7)
+		for i, dt := range dts {
+			quranLabels[i] = dt.Format("02")
+		}
+
+		for i, cls := range classrooms {
+			dataset := map[string]interface{}{
+				"label":      cls.Name,
+				"color_code": colors[i%len(colors)],
+				"data":       make([]int64, 7),
+			}
+			
+			dataArr := make([]int64, 7)
+			for j, dt := range dts {
+				var count int64
+				s.db.Model(&models.QuranMemorization{}).
+					Joins("JOIN students ON students.id = quran_memorizations.student_id").
+					Where("students.classroom_id = ? AND quran_memorizations.date >= ? AND quran_memorizations.date < ?", cls.ID, dt, dt.AddDate(0, 0, 1)).
+					Count(&count)
+				dataArr[j] = count
+			}
+			dataset["data"] = dataArr
+			quranDatasets = append(quranDatasets, dataset)
+		}
+	}
+	quranChart["labels"] = quranLabels
+	quranChart["datasets"] = quranDatasets
+
+	// 2. Lesson Chart Data (Multi-Class)
+	lessonChart := map[string]interface{}{}
+	var lessonLabels []string
+	var lessonDatasets []map[string]interface{}
+
+	if filter == "month" {
+		lessonLabels = []string{"W1", "W2", "W3", "W4"}
+		for i, cls := range classrooms {
+			dataset := map[string]interface{}{
+				"label":      cls.Name,
+				"color_code": colors[i%len(colors)],
+				"data":       make([]int64, 4),
+			}
+			
+			var results []struct {
+				Week  int
+				Count int64
+			}
+			s.db.Model(&models.LessonMemorization{}).
+				Select("((strftime('%d', lesson_memorizations.date) - 1) / 7) as week, count(*) as count").
+				Joins("JOIN students ON students.id = lesson_memorizations.student_id").
+				Where("students.classroom_id = ? AND lesson_memorizations.date >= ? AND lesson_memorizations.date < ?", cls.ID, today.AddDate(0, -1, 0), tomorrow).
+				Group("week").Scan(&results)
+			
+			dataArr := make([]int64, 4)
+			for _, r := range results {
+				if r.Week >= 0 && r.Week < 4 {
+					dataArr[r.Week] = r.Count
+				}
+			}
+			dataset["data"] = dataArr
+			lessonDatasets = append(lessonDatasets, dataset)
+		}
+	} else {
+		dts := getDates(7)
+		lessonLabels = make([]string, 7)
+		for i, dt := range dts {
+			lessonLabels[i] = dt.Format("02")
+		}
+
+		for i, cls := range classrooms {
+			dataset := map[string]interface{}{
+				"label":      cls.Name,
+				"color_code": colors[i%len(colors)],
+				"data":       make([]int64, 7),
+			}
+			
+			dataArr := make([]int64, 7)
+			for j, dt := range dts {
+				var count int64
+				s.db.Model(&models.LessonMemorization{}).
+					Joins("JOIN students ON students.id = lesson_memorizations.student_id").
+					Where("students.classroom_id = ? AND lesson_memorizations.date >= ? AND lesson_memorizations.date < ?", cls.ID, dt, dt.AddDate(0, 0, 1)).
+					Count(&count)
+				dataArr[j] = count
+			}
+			dataset["data"] = dataArr
+			lessonDatasets = append(lessonDatasets, dataset)
+		}
+	}
+	lessonChart["labels"] = lessonLabels
+	lessonChart["datasets"] = lessonDatasets
+
+	// 3. Attendance Chart Data (Multi-Class)
+	attendanceChart := map[string]interface{}{}
+	var attLabels []string
+	var attDatasets []map[string]interface{}
+
+	if filter == "month" {
+		attLabels = []string{"W1", "W2", "W3", "W4"}
+		for i, cls := range classrooms {
+			dataset := map[string]interface{}{
+				"label":      cls.Name,
+				"color_code": colors[i%len(colors)],
+				"data":       make([]int64, 4),
+			}
+			
+			dataArr := make([]int64, 4)
+			for w := 0; w < 4; w++ {
+				var count int64
+				startW := today.AddDate(0, -1, 0).AddDate(0, 0, w*7)
+				endW := startW.AddDate(0, 0, 7)
+				s.db.Model(&models.Attendance{}).
+					Where("classroom_id = ? AND date >= ? AND date < ? AND status = ?", cls.ID, startW, endW, "Hadir").
+					Count(&count)
+				dataArr[w] = count
+			}
+			dataset["data"] = dataArr
+			attDatasets = append(attDatasets, dataset)
+		}
+	} else {
+		dts := getDates(7)
+		attLabels = make([]string, 7)
+		for i, dt := range dts {
+			attLabels[i] = dt.Format("02")
+		}
+
+		for i, cls := range classrooms {
+			dataset := map[string]interface{}{
+				"label":      cls.Name,
+				"color_code": colors[i%len(colors)],
+				"data":       make([]int64, 7),
+			}
+			
+			dataArr := make([]int64, 7)
+			for j, dt := range dts {
+				var count int64
+				s.db.Model(&models.Attendance{}).
+					Where("classroom_id = ? AND date >= ? AND date < ? AND status = ?", cls.ID, dt, dt.AddDate(0, 0, 1), "Hadir").
+					Count(&count)
+				dataArr[j] = count
+			}
+			dataset["data"] = dataArr
+			attDatasets = append(attDatasets, dataset)
+		}
+	}
+	attendanceChart["labels"] = attLabels
+	attendanceChart["datasets"] = attDatasets
+
+	// Existing breakdown stats...
+	attendanceStats := []struct {
+		Status string `json:"status"`
+		Count  int64  `json:"count"`
+	}{}
+	s.db.Model(&models.Attendance{}).
+		Select("status, count(*) as count").
+		Where("date >= ? AND date < ?", today, tomorrow).
+		Group("status").
+		Scan(&attendanceStats)
+
+	tahfidzStats := []struct {
+		Type  string `json:"type"`
+		Count int64  `json:"count"`
+	}{}
+	s.db.Model(&models.QuranMemorization{}).
+		Select("type, count(*) as count").
+		Where("date >= ? AND date < ?", today, tomorrow).
+		Group("type").
+		Scan(&tahfidzStats)
+
+	var totalJournalsToday int64
+	s.db.Model(&models.TeachingJournal{}).Where("date >= ? AND date < ?", today, tomorrow).Count(&totalJournalsToday)
+
+	assessmentStats := []struct {
+		Type  string `json:"type"`
+		Count int64  `json:"count"`
+	}{}
+	s.db.Model(&models.Assessment{}).
+		Select("type, count(*) as count").
+		Group("type").
+		Scan(&assessmentStats)
+
+	genderStats := []struct {
+		Gender string `json:"gender"`
+		Count  int64  `json:"count"`
+	}{}
+	s.db.Model(&models.Student{}).
+		Select("gender, count(*) as count").
+		Group("gender").
+		Scan(&genderStats)
+
+	classroomStats := []struct {
+		Name  string `json:"name"`
+		Count int64  `json:"count"`
+	}{}
+	s.db.Model(&models.Student{}).
+		Select("classrooms.name as name, count(students.id) as count").
+		Joins("left join classrooms on classrooms.id = students.classroom_id").
+		Group("classrooms.name").
+		Scan(&classroomStats)
+
+	lessonMemStats := []struct {
+		Subject string `json:"subject"`
+		Count   int64  `json:"count"`
+	}{}
+	s.db.Model(&models.LessonMemorization{}).
+		Select("subject_name as subject, count(*) as count").
+		Where("date >= ? AND date < ?", today, tomorrow).
+		Group("subject_name").
+		Scan(&lessonMemStats)
+
+	topAbsentStudents := []struct {
+		Name   string `json:"name"`
+		Status string `json:"status"`
+		Count  int64  `json:"count"`
+	}{}
+	s.db.Model(&models.Attendance{}).
+		Select("students.name, attendances.status, count(*) as count").
+		Joins("join students on students.id = attendances.student_id").
+		Where("attendances.status IN ?", []string{"Sakit", "Izin", "Alpa", "Piket"}).
+		Group("students.name, attendances.status").
+		Order("count desc").
+		Limit(5).
+		Scan(&topAbsentStudents)
+
+	var characterStats []struct {
+		Grade string `json:"grade"`
+		Count int64  `json:"count"`
+	}
+	s.db.Model(&models.Assessment{}).
+		Select("grade, count(*) as count").
+		Where("type = ?", "ATTITUDE").
+		Group("grade").
+		Scan(&characterStats)
+
+	var totalTeachers int64
+	s.db.Model(&models.Teacher{}).Count(&totalTeachers)
+
+	teacherGenderStats := []struct {
+		Gender string `json:"gender"`
+		Count  int64  `json:"count"`
+	}{}
+	s.db.Model(&models.Teacher{}).
+		Select("gender, count(*) as count").
+		Group("gender").
+		Scan(&teacherGenderStats)
+
+	teacherAttendanceStats := []struct {
+		Status string `json:"status"`
+		Count  int64  `json:"count"`
+	}{}
+	s.db.Model(&models.TeacherAttendance{}).
+		Select("status, count(*) as count").
+		Where("date >= ? AND date < ?", today, tomorrow).
+		Group("status").
+		Scan(&teacherAttendanceStats)
+
+	var upcomingEvents []models.AcademicCalendar
+	s.db.Where("start_date >= ? AND is_active = ?", today, true).
+		Order("start_date asc").
+		Limit(5).
+		Find(&upcomingEvents)
 
 	return map[string]interface{}{
-		"total_subjects":          totalSubjects,
-		"total_schedules":         totalSchedules,
-		"total_attendance_today": totalAttendanceToday,
+		"total_subjects":           totalSubjects,
+		"total_schedules":          totalSchedules,
+		"total_students":           totalStudents,
+		"total_classrooms":         totalClassrooms,
+		"total_teachers":           totalTeachers,
+		"attendance_today":         attendanceStats,
+		"tahfidz_today":            tahfidzStats,
+		"lesson_mem_today":         lessonMemStats,
+		"top_absent_students":      topAbsentStudents,
+		"character_stats":          characterStats,
+		"journals_today_count":     totalJournalsToday,
+		"assessments_summary":      assessmentStats,
+		"gender_stats":             genderStats,
+		"classroom_stats":          classroomStats,
+		"teacher_gender_stats":      teacherGenderStats,
+		"teacher_attendance_today":  teacherAttendanceStats,
+		"upcoming_events":           upcomingEvents,
+		"quran_chart":              quranChart,
+		"lesson_chart":             lessonChart,
+		"attendance_chart":          attendanceChart,
 	}, nil
 }
 

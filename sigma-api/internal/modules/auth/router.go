@@ -15,4 +15,7 @@ func RegisterRoutes(router fiber.Router) {
 
 	// Protected routes
 	auth.Get("/me", middleware.Protected(), GetMe)
+	auth.Put("/profile", middleware.Protected(), UpdateProfile)
+	auth.Put("/password", middleware.Protected(), UpdatePassword)
+	auth.Post("/avatar", middleware.Protected(), UploadAvatar)
 }

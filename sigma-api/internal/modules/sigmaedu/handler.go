@@ -18,7 +18,8 @@ func NewEduHandler(s EduService) *EduHandler {
 
 // GetStats returns summary statistics for academic module
 func (h *EduHandler) GetStats(c fiber.Ctx) error {
-	stats, err := h.service.GetStats()
+	filter := c.Query("filter", "week")
+	stats, err := h.service.GetStats(filter)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

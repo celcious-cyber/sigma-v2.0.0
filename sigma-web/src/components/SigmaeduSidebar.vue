@@ -115,7 +115,7 @@ onMounted(() => {
 
 <template>
   <aside 
-    class="border-r border-sigma-border bg-sigma-surface/50 backdrop-blur-xl flex flex-col hidden lg:flex h-screen sticky top-0 transition-all duration-500 ease-in-out z-50 group/sidebar"
+    class="border-r border-sigma-border bg-sigma-surface/50 backdrop-blur-xl flex flex-col hidden lg:flex h-screen sticky top-0 transition-all duration-500 ease-in-out z-[60] group/sidebar"
     :class="isCollapsed ? 'w-24' : 'w-72'"
   >
     <!-- Toggle Button -->

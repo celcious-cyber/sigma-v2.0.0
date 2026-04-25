@@ -15,6 +15,19 @@ const routes = [
     name: 'Portal',
     component: () => import('../views/portal/portal.vue')
   },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../layouts/SigmaeduLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'ProfileSettings',
+        component: () => import('../views/auth/ProfileView.vue'),
+        meta: { title: 'Pengaturan Profil' }
+      }
+    ]
+  },
   // Sigmabase Module
   {
     path: '/sigmabase',
