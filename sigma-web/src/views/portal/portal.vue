@@ -25,9 +25,9 @@ const moduleMapping = {
 const panels = ref([
   { name: 'Sigmabase', icon: DatabaseZap, color: 'emerald', desc: 'Data Induk Santri & Wali', url: '/sigmabase' },
   { name: 'Sigmaedu', icon: School, color: 'blue', desc: 'Kurikulum & Nilai Akademik', url: '/sigmaedu' },
-  { name: 'Sigmaflow', icon: Wallet, color: 'indigo', desc: 'Manajemen Keuangan & SPP', url: '/flow/invoices' },
+  { name: 'Sigmaflow', icon: Wallet, color: 'indigo', desc: 'Manajemen Keuangan & SPP', url: '/sigmaflow' },
   { name: 'Sigmadesk', icon: NotepadText, color: 'purple', desc: 'Tamu & Surat Menyurat', url: '#' },
-  { name: 'Sigmaguard', icon: ShieldCheck, color: 'rose', desc: 'Perizinan & Keamanan', url: '/guard/violations' },
+  { name: 'Sigmaguard', icon: ShieldCheck, color: 'rose', desc: 'Perizinan & Keamanan', url: '/sigmaguard/violations' },
   { name: 'Sigmacare', icon: Ambulance, color: 'rose', desc: 'Kesehatan & Kebugaran', url: '#' },
   { name: 'Sigmalit', icon: BookOpen, color: 'rose', desc: 'Manajemen Perpustakaan', url: '#' },
 ])
@@ -108,7 +108,7 @@ const handleLogout = () => {
           </div>
         </div>
 
-        <div v-if="user.role === 'Administrator'"
+        <div v-if="user.role === 'Administrator' || user.role === 'Admin'"
              class="lg:col-span-2 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 p-6 rounded-[2.5rem] flex flex-col group hover:border-amber-500/50 transition-all duration-500">
           <div class="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-6 border border-amber-500/20 group-hover:bg-amber-500 group-hover:text-white transition-all">
             <Settings class="w-8 h-8" />

@@ -47,7 +47,8 @@ func Protected() fiber.Handler {
 func AdminOnly() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		role, ok := c.Locals("role").(string)
-		if !ok || role != "Administrator" {
+		fmt.Printf("DEBUG: AdminOnly middleware - role: '%s', ok: %v\n", role, ok)
+		if !ok || (role != "Administrator" && role != "Admin") {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error": "Access denied: Administrator only",
 			})

@@ -29,6 +29,9 @@ func (h *SigmabaseHandler) GetStudents(c fiber.Ctx) error {
 	if gender := c.Query("gender"); gender != "" {
 		query = query.Where("gender = ?", gender)
 	}
+	if search := c.Query("search"); search != "" {
+		query = query.Where("name LIKE ? OR nis LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
 
 	if err := query.Find(&students).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})

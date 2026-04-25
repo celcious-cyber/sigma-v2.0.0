@@ -163,24 +163,38 @@ const routes = [
       }
     ]
   },
+  // Sigmaflow Module
   {
-    path: '/dashboard',
-    component: () => import('../layouts/AppLayout.vue'),
+    path: '/sigmaflow',
+    component: () => import('../layouts/SigmaflowLayout.vue'),
     children: [
       {
         path: '',
-        name: 'Dashboard',
-        component: () => import('../views/DashboardView.vue')
+        name: 'FlowDashboard',
+        component: () => import('../views/sigmaflow/dashboard.vue'),
+        meta: { title: 'Dashboard Keuangan' }
       },
-      // Sigmaflow
       {
-        path: '/flow/invoices',
-        name: 'Invoices',
-        component: () => import('../views/sigmaflow/dashboard.vue')
+        path: 'invoices',
+        name: 'FlowInvoices',
+        component: () => import('../views/sigmaflow/invoices.vue'),
+        meta: { title: 'Data Faktur' }
       },
-      // Sigmaguard
       {
-        path: '/guard/violations',
+        path: 'categories',
+        name: 'FlowCategories',
+        component: () => import('../views/sigmaflow/categories.vue'),
+        meta: { title: 'Kategori Pembayaran' }
+      }
+    ]
+  },
+  // Sigmaguard
+  {
+    path: '/sigmaguard',
+    component: () => import('../layouts/AppLayout.vue'),
+    children: [
+      {
+        path: 'violations',
         name: 'Violations',
         component: () => import('../views/sigmaguard/dashboard.vue')
       }

@@ -21,6 +21,7 @@ type Invoice struct {
 	Student           *Student        `gorm:"foreignKey:StudentID" json:"student,omitempty"`
 	PaymentCategoryID uint            `gorm:"not null" json:"payment_category_id"`
 	PaymentCategory   *PaymentCategory `gorm:"foreignKey:PaymentCategoryID" json:"payment_category,omitempty"`
+	InvoiceNumber     string          `gorm:"type:varchar(50);unique;not null" json:"invoice_number"`
 	Amount            float64         `gorm:"type:decimal(12,2);not null" json:"amount"`
 	DueDate           time.Time       `json:"due_date"`
 	Status            string          `gorm:"type:string;default:'Unpaid'" json:"status"` // Unpaid, Partial, Paid
@@ -38,4 +39,5 @@ type Payment struct {
 	AmountPaid  float64    `gorm:"type:decimal(12,2);not null" json:"amount_paid"`
 	Method      string     `json:"method"` // Transfer, Cash, Xendit
 	ProofImage  *string    `json:"proof_image,omitempty"`
+	Invoice     *Invoice   `gorm:"foreignKey:InvoiceID" json:"invoice,omitempty"`
 }

@@ -9,12 +9,20 @@ import (
 func RegisterAdminRoutes(router fiber.Router, service FinanceService) {
 	h := NewFinanceHandler(service)
 	
+	// Group under /admin/flow
 	flow := router.Group("/flow", middleware.Protected(), middleware.AdminOnly())
 	
-	flow.Get("/invoices", func(c fiber.Ctx) error {
-		// Logic to list all invoices (Admin only)
-		return c.SendString("List of all invoices")
-	})
+	flow.Get("/stats", h.GetGlobalStats)
+	flow.Get("/invoices", h.GetAllInvoices)
+	flow.Post("/invoices/bulk", h.CreateBulkInvoices)
+	flow.Post("/invoices", h.CreateInvoice)
+	flow.Put("/invoices/:id", h.UpdateInvoice)
+	flow.Delete("/invoices/:id", h.DeleteInvoice)
+	flow.Get("/categories", h.GetCategories)
+	flow.Post("/categories", h.CreateCategory)
+	flow.Put("/categories/:id", h.UpdateCategory)
+	flow.Delete("/categories/:id", h.DeleteCategory)
+	flow.Get("/students/nis/:nis", h.FindStudentByNIS)
 	
 	// Webhook is public but validated inside handler
 	router.Post("/xendit/callback", h.XenditWebhook)
