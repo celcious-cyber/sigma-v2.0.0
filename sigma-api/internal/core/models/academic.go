@@ -144,6 +144,17 @@ type TeachingJournal struct {
 	StudyHourID uint       `gorm:"not null" json:"study_hour_id"`
 	StudyHour   *StudyHour `gorm:"foreignKey:StudyHourID" json:"study_hour,omitempty"`
 	Date        time.Time  `json:"date"`
-	Status      string     `gorm:"type:varchar(20)" json:"status"` // Hadir, Izin, Sakit, Alpha
-	Remarks     string     `gorm:"type:text" json:"remarks"`        // Materi/Catatan
+
+	// RPP Content
+	Competence     string `gorm:"type:text" json:"competence"`      // Kompetensi Dasar
+	MainMaterial   string `gorm:"type:text" json:"main_material"`   // Materi Pokok
+	LearningGoal   string `gorm:"type:text" json:"learning_goal"`   // Tujuan Belajar
+	Activities     string `gorm:"type:text" json:"activities"`      // Ringkasan Kegiatan
+	Media          string `gorm:"type:text" json:"media"`           // Media/Alat
+	StudentNotes   string `gorm:"type:text" json:"student_notes"`   // Catatan Siswa
+	Obstacles      string `gorm:"type:text" json:"obstacles"`       // Hambatan
+	AbsenceRecords string `gorm:"type:text" json:"absence_records"` // JSON list siswa (S, I, A)
+
+	Status  string `gorm:"type:varchar(20)" json:"status"` // Hadir, Izin, Sakit, Alpha
+	Remarks string `gorm:"type:text" json:"remarks"`        // Materi/Catatan
 }

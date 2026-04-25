@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { 
   TrendingUp, Users2, GraduationCap, MapPin, Briefcase, UserCheck,
-  Sun, Moon, ArrowLeft
+  ArrowLeft
 } from 'lucide-vue-next'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
@@ -10,20 +10,7 @@ import VueApexCharts from 'vue3-apexcharts'
 import { ApexOptions } from 'apexcharts'
 
 const router = useRouter()
-const isDark = ref(true)
 const user = ref({ name: 'Admin', role: 'Staff' })
-
-const toggleTheme = () => {
-  isDark.value = !isDark.value
-  if (isDark.value) {
-    document.documentElement.classList.add('dark')
-    localStorage.setItem('sigma_theme', 'dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-    localStorage.setItem('sigma_theme', 'light')
-  }
-}
-
 
 // Stats state
 const stats = ref<any>({
@@ -138,8 +125,8 @@ onMounted(() => {
   const savedUser = localStorage.getItem('sigma_user')
   if (savedUser) user.value = JSON.parse(savedUser)
   
-  const savedTheme = localStorage.getItem('sigma_theme')
-  isDark.value = savedTheme !== 'light'
+  document.documentElement.classList.remove('dark')
+  localStorage.setItem('sigma_theme', 'light')
   
   fetchStats()
   fetchRecentStudents()
@@ -157,16 +144,6 @@ onMounted(() => {
       </div>
       
       <div class="flex items-center gap-3">
-        <!-- Theme Toggle -->
-        <button @click="toggleTheme" 
-                class="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-sigma-surface border border-sigma-border text-sigma-text hover:border-sigma-emerald/30 transition-all shadow-sm group">
-          <div class="w-6 h-6 rounded-lg bg-sigma-emerald/10 flex items-center justify-center text-sigma-emerald">
-            <Sun v-if="isDark" class="w-3.5 h-3.5" />
-            <Moon v-else class="w-3.5 h-3.5" />
-          </div>
-          <span class="text-[10px] font-black uppercase tracking-widest">{{ isDark ? 'Light' : 'Dark' }}</span>
-        </button>
-
         <!-- Back to Portal -->
         <button @click="router.push('/portal')" 
                 class="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-sigma-surface border border-sigma-border text-sigma-muted hover:text-sigma-text hover:border-sigma-emerald/30 transition-all group shadow-sm">

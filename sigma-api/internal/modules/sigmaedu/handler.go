@@ -363,6 +363,19 @@ func (h *EduHandler) BulkRecordAssessments(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Assessments recorded successfully"})
 }
 
+func (h *EduHandler) DeleteAssessments(c fiber.Ctx) error {
+	classID, _ := strconv.Atoi(c.Query("classroom_id"))
+	subjectID, _ := strconv.Atoi(c.Query("subject_id"))
+	term := c.Query("term")
+	year := c.Query("academic_year")
+	aType := c.Query("type")
+
+	if err := h.service.DeleteAssessments(uint(classID), uint(subjectID), term, year, aType); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "Assessments deleted successfully"})
+}
+
 // Tahfidz Handlers
 func (h *EduHandler) GetTahfidzRecords(c fiber.Ctx) error {
 	classID, _ := strconv.Atoi(c.Query("classroom_id"))
@@ -392,6 +405,34 @@ func (h *EduHandler) BulkRecordTahfidz(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Tahfidz records saved successfully"})
 }
 
+func (h *EduHandler) DeleteTahfidz(c fiber.Ctx) error {
+	classID, _ := strconv.Atoi(c.Query("classroom_id"))
+	date := c.Query("date")
+	tType := c.Query("type")
+
+	if err := h.service.DeleteTahfidz(uint(classID), date, tType); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "Tahfidz records deleted successfully"})
+}
+
+func (h *EduHandler) GetTahfidzHistory(c fiber.Ctx) error {
+	studentID, _ := strconv.Atoi(c.Params("student_id"))
+	records, err := h.service.GetTahfidzHistoryByStudent(uint(studentID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(records)
+}
+
+func (h *EduHandler) DeleteTahfidzRecord(c fiber.Ctx) error {
+	id, _ := strconv.Atoi(c.Params("id"))
+	if err := h.service.DeleteTahfidzRecord(uint(id)); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "Record deleted successfully"})
+}
+
 // Lesson Memorization Handlers
 func (h *EduHandler) GetLessonMemorizations(c fiber.Ctx) error {
 	classID, _ := strconv.Atoi(c.Query("classroom_id"))
@@ -419,6 +460,23 @@ func (h *EduHandler) BulkRecordLessonMemorizations(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"message": "Lesson memorization records saved successfully"})
+}
+
+func (h *EduHandler) GetLessonMemorizationHistory(c fiber.Ctx) error {
+	studentID, _ := strconv.Atoi(c.Params("student_id"))
+	records, err := h.service.GetLessonMemorizationHistory(uint(studentID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(records)
+}
+
+func (h *EduHandler) DeleteLessonMemorizationRecord(c fiber.Ctx) error {
+	id, _ := strconv.Atoi(c.Params("id"))
+	if err := h.service.DeleteLessonMemorizationRecord(uint(id)); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "Record deleted successfully"})
 }
 
 // Teacher Attendance Handlers
@@ -504,5 +562,16 @@ func (h *EduHandler) DeleteTeachingJournal(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"message": "Journal deleted successfully"})
+}
+
+func (h *EduHandler) GetLastJournal(c fiber.Ctx) error {
+	teacherID := c.Locals("user_id").(uint)
+	subjectID, _ := strconv.Atoi(c.Query("subject_id"))
+
+	journal, err := h.service.GetLastJournal(teacherID, uint(subjectID))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No journal found"})
+	}
+	return c.JSON(journal)
 }
 

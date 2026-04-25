@@ -7,14 +7,9 @@ const route = useRoute()
 const isDark = ref(true)
 
 onMounted(() => {
-  const savedTheme = localStorage.getItem('sigma_theme')
-  if (savedTheme === 'light') {
-    isDark.value = false
-    document.documentElement.classList.remove('dark')
-  } else {
-    isDark.value = true
-    document.documentElement.classList.add('dark')
-  }
+  isDark.value = false
+  document.documentElement.classList.remove('dark')
+  localStorage.setItem('sigma_theme', 'light')
 })
 </script>
 

@@ -47,14 +47,20 @@ func RegisterAdminRoutes(router fiber.Router, service EduService) {
 	// Assessments
 	edu.Get("/assessments", h.GetAssessments)
 	edu.Post("/assessments/bulk", h.BulkRecordAssessments)
+	edu.Delete("/assessments", h.DeleteAssessments)
 
 	// Tahfidz
 	edu.Get("/tahfidz", h.GetTahfidzRecords)
 	edu.Post("/tahfidz/bulk", h.BulkRecordTahfidz)
+	edu.Delete("/tahfidz", h.DeleteTahfidz)
+	edu.Delete("/tahfidz/:id", h.DeleteTahfidzRecord)
+	edu.Get("/tahfidz/history/:student_id", h.GetTahfidzHistory)
 
 	// Lesson Memorization
 	edu.Get("/memorization", h.GetLessonMemorizations)
 	edu.Post("/memorization/bulk", h.BulkRecordLessonMemorizations)
+	edu.Delete("/memorization/:id", h.DeleteLessonMemorizationRecord)
+	edu.Get("/memorization/history/:student_id", h.GetLessonMemorizationHistory)
 
 	// Teacher Attendance
 	edu.Get("/teacher-attendance", h.GetTeacherAttendance)
@@ -62,6 +68,7 @@ func RegisterAdminRoutes(router fiber.Router, service EduService) {
 
 	// Teaching Journal
 	edu.Get("/journals", h.GetTeachingJournals)
+	edu.Get("/journals/last", h.GetLastJournal)
 	edu.Post("/journals", h.CreateTeachingJournal)
 	edu.Put("/journals/:id", h.UpdateTeachingJournal)
 	edu.Delete("/journals/:id", h.DeleteTeachingJournal)

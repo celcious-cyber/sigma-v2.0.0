@@ -57,6 +57,7 @@ const menuItems = ref([
     icon: Briefcase,
     children: [
       { name: 'Presensi Guru', icon: UserCheck, url: '/sigmaedu/teacher-attendance' },
+      { name: 'Jurnal Mengajar', icon: BookOpen, url: '/sigmaedu/journal' },
     ]
   },
   {
@@ -106,14 +107,9 @@ onMounted(() => {
     openMenus.value.push(currentActiveParent.value)
   }
 
-  const savedTheme = localStorage.getItem('sigma_theme')
-  if (savedTheme === 'light') {
-    isDark.value = false
-    document.documentElement.classList.remove('dark')
-  } else {
-    isDark.value = true
-    document.documentElement.classList.add('dark')
-  }
+  isDark.value = false
+  document.documentElement.classList.remove('dark')
+  localStorage.setItem('sigma_theme', 'light')
 })
 </script>
 

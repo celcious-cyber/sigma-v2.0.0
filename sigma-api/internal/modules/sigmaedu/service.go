@@ -1,6 +1,7 @@
 package sigmaedu
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -40,20 +41,27 @@ type EduService interface {
 	// Assessments
 	GetAssessments(classID uint, subjectID uint, term, year, assessmentType string) ([]models.Assessment, error)
 	BulkRecordAssessments(assessments []models.Assessment) error
+	DeleteAssessments(classID uint, subjectID uint, term, year, assessmentType string) error
 	GetAssessmentsByStudent(studentID uint) ([]models.Assessment, error)
 	// Tahfidz
 	GetTahfidzRecords(classID uint, date string) ([]models.QuranMemorization, error)
 	RecordTahfidz(record models.QuranMemorization) error
 	BulkRecordTahfidz(records []models.QuranMemorization) error
+	DeleteTahfidz(classID uint, date string, tahfidzType string) error
+	DeleteTahfidzRecord(id uint) error
+	GetTahfidzHistoryByStudent(studentID uint) ([]models.QuranMemorization, error)
 	// Lesson Memorization
 	GetLessonMemorizations(classID uint, date string) ([]models.LessonMemorization, error)
 	BulkRecordLessonMemorizations(records []models.LessonMemorization) error
+	GetLessonMemorizationHistory(studentID uint) ([]models.LessonMemorization, error)
+	DeleteLessonMemorizationRecord(id uint) error
 	// Teacher Attendance
 	GetTeacherAttendance(date string) ([]models.TeacherAttendance, error)
 	BulkRecordTeacherAttendance(records []models.TeacherAttendance) error
 	// Teaching Journal
 	GetTeachingJournals(date string, classroomID *uint, subjectID *uint) ([]models.TeachingJournal, error)
 	CreateTeachingJournal(journal *models.TeachingJournal) error
+	GetLastJournal(teacherID uint, subjectID uint) (*models.TeachingJournal, error)
 	UpdateTeachingJournal(id uint, journal *models.TeachingJournal) error
 	DeleteTeachingJournal(id uint) error
 	// Classrooms
@@ -192,7 +200,7 @@ func (s *eduService) GetAllTeachers() ([]models.Teacher, error) {
 
 func (s *eduService) GetStudentsByClass(classID uint) ([]models.Student, error) {
 	var students []models.Student
-	err := s.db.Where("classroom_id = ?", classID).Find(&students).Error
+	err := s.db.Preload("Classroom").Where("classroom_id = ?", classID).Find(&students).Error
 	return students, err
 }
 
@@ -203,6 +211,8 @@ func (s *eduService) GetAssessments(classID uint, subjectID uint, term, year, as
 	
 	if subjectID > 0 {
 		query = query.Where("subject_id = ?", subjectID)
+	} else {
+		query = query.Where("subject_id IS NULL OR subject_id = 0")
 	}
 	
 	if assessmentType != "" {
@@ -244,6 +254,19 @@ func (s *eduService) BulkRecordAssessments(assessments []models.Assessment) erro
 		}
 		return nil
 	})
+}
+
+func (s *eduService) DeleteAssessments(classID uint, subjectID uint, term, year, assessmentType string) error {
+	query := s.db.Where("classroom_id = ? AND term = ? AND academic_year = ? AND type = ?", 
+		classID, term, year, assessmentType)
+	
+	if subjectID > 0 {
+		query = query.Where("subject_id = ?", subjectID)
+	} else {
+		query = query.Where("subject_id IS NULL OR subject_id = 0")
+	}
+	
+	return query.Delete(&models.Assessment{}).Error
 }
 
 func (s *eduService) GetAssessmentsByStudent(studentID uint) ([]models.Assessment, error) {
@@ -305,16 +328,41 @@ func (s *eduService) BulkRecordTahfidz(records []models.QuranMemorization) error
 	})
 }
 
-func (s *eduService) GetLessonMemorizations(classID uint, date string) ([]models.LessonMemorization, error) {
-	var records []models.LessonMemorization
+func (s *eduService) DeleteTahfidz(classID uint, date string, tahfidzType string) error {
 	parsedDate, _ := time.Parse("2006-01-02", date)
 	startOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, parsedDate.Location())
 	endOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 0, parsedDate.Location())
 
-	err := s.db.Preload("Student").
-		Joins("JOIN students ON students.id = lesson_memorizations.student_id").
-		Where("students.classroom_id = ? AND lesson_memorizations.date BETWEEN ? AND ?", classID, startOfDay, endOfDay).
-		Find(&records).Error
+	// Join with students to filter by classroom_id
+	return s.db.Where("type = ? AND date BETWEEN ? AND ? AND student_id IN (SELECT id FROM students WHERE classroom_id = ?)", 
+		tahfidzType, startOfDay, endOfDay, classID).Delete(&models.QuranMemorization{}).Error
+}
+
+func (s *eduService) GetTahfidzHistoryByStudent(studentID uint) ([]models.QuranMemorization, error) {
+	var records []models.QuranMemorization
+	err := s.db.Where("student_id = ?", studentID).Order("date desc").Find(&records).Error
+	return records, err
+}
+
+func (s *eduService) DeleteTahfidzRecord(id uint) error {
+	return s.db.Delete(&models.QuranMemorization{}, id).Error
+}
+
+func (s *eduService) GetLessonMemorizations(classID uint, date string) ([]models.LessonMemorization, error) {
+	var records []models.LessonMemorization
+	query := s.db.Joins("JOIN students ON students.id = lesson_memorizations.student_id")
+	
+	if classID > 0 {
+		query = query.Where("students.classroom_id = ?", classID)
+	}
+	
+	if date != "" {
+		start := date + " 00:00:00"
+		end := date + " 23:59:59"
+		query = query.Where("lesson_memorizations.date BETWEEN ? AND ?", start, end)
+	}
+
+	err := query.Find(&records).Error
 	return records, err
 }
 
@@ -322,18 +370,14 @@ func (s *eduService) BulkRecordLessonMemorizations(records []models.LessonMemori
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		for _, r := range records {
 			var existing models.LessonMemorization
+			// Use start and end of day to check for existing record on that date
 			startOfDay := time.Date(r.Date.Year(), r.Date.Month(), r.Date.Day(), 0, 0, 0, 0, r.Date.Location())
 			endOfDay := time.Date(r.Date.Year(), r.Date.Month(), r.Date.Day(), 23, 59, 59, 0, r.Date.Location())
 			
-			query := tx.Where("student_id = ? AND date BETWEEN ? AND ?", r.StudentID, startOfDay, endOfDay)
-			
-			if err := query.First(&existing).Error; err == nil {
-				if err := tx.Model(&existing).Updates(map[string]interface{}{
-					"subject_name": r.SubjectName,
-					"title":        r.Title,
-					"grade":        r.Grade,
-					"remarks":      r.Remarks,
-				}).Error; err != nil {
+			err := tx.Where("student_id = ? AND subject_name = ? AND date BETWEEN ? AND ?", r.StudentID, r.SubjectName, startOfDay, endOfDay).First(&existing).Error
+			if err == nil {
+				r.ID = existing.ID
+				if err := tx.Save(&r).Error; err != nil {
 					return err
 				}
 			} else {
@@ -344,6 +388,16 @@ func (s *eduService) BulkRecordLessonMemorizations(records []models.LessonMemori
 		}
 		return nil
 	})
+}
+
+func (s *eduService) GetLessonMemorizationHistory(studentID uint) ([]models.LessonMemorization, error) {
+	var records []models.LessonMemorization
+	err := s.db.Where("student_id = ?", studentID).Order("date desc").Find(&records).Error
+	return records, err
+}
+
+func (s *eduService) DeleteLessonMemorizationRecord(id uint) error {
+	return s.db.Delete(&models.LessonMemorization{}, id).Error
 }
 
 func (s *eduService) GetTeacherAttendance(date string) ([]models.TeacherAttendance, error) {
@@ -407,7 +461,27 @@ func (s *eduService) GetTeachingJournals(date string, classroomID *uint, subject
 }
 
 func (s *eduService) CreateTeachingJournal(journal *models.TeachingJournal) error {
+	// Validation: No overlap for same teacher, date, and study hour
+	var existing models.TeachingJournal
+	startOfDay := time.Date(journal.Date.Year(), journal.Date.Month(), journal.Date.Day(), 0, 0, 0, 0, journal.Date.Location())
+	endOfDay := time.Date(journal.Date.Year(), journal.Date.Month(), journal.Date.Day(), 23, 59, 59, 0, journal.Date.Location())
+	
+	if err := s.db.Where("teacher_id = ? AND date BETWEEN ? AND ? AND study_hour_id = ?", 
+		journal.TeacherID, startOfDay, endOfDay, journal.StudyHourID).First(&existing).Error; err == nil {
+		return fmt.Errorf("jurnal untuk jam pelajaran ini sudah ada")
+	}
+
 	return s.db.Create(journal).Error
+}
+
+func (s *eduService) GetLastJournal(teacherID uint, subjectID uint) (*models.TeachingJournal, error) {
+	var lastJournal models.TeachingJournal
+	err := s.db.Where("teacher_id = ? AND subject_id = ?", teacherID, subjectID).
+		Order("date desc").First(&lastJournal).Error
+	if err != nil {
+		return nil, err
+	}
+	return &lastJournal, nil
 }
 
 func (s *eduService) UpdateTeachingJournal(id uint, journal *models.TeachingJournal) error {

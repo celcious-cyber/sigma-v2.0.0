@@ -1,15 +1,15 @@
 <template>
-  <div class="flex h-screen bg-sigma-dark text-slate-100 overflow-hidden">
+  <div class="flex h-screen bg-sigma-app text-sigma-text overflow-hidden">
     <!-- Sidebar -->
-    <aside class="w-72 bg-white/5 border-r border-white/10 flex flex-col z-20 overflow-y-auto">
+    <aside class="w-72 bg-sigma-surface-alt border-r border-sigma-border flex flex-col z-20 overflow-y-auto">
       <div class="p-8">
         <h1 class="text-2xl font-black premium-gradient-text tracking-tighter">SIGMA v2.0</h1>
-        <p class="text-[10px] text-slate-500 uppercase tracking-[0.2em] mt-1 font-bold">Modular Ecosystem</p>
+        <p class="text-[10px] text-sigma-muted uppercase tracking-[0.2em] mt-1 font-bold">Modular Ecosystem</p>
       </div>
 
       <nav class="flex-1 px-4 space-y-2">
         <div class="pb-4">
-          <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Core Modules</p>
+          <p class="px-4 text-[10px] font-bold text-sigma-muted uppercase tracking-widest mb-3">Core Modules</p>
           <router-link to="/dashboard" class="nav-item">
             <LayoutDashboard :size="20" />
             <span>Beranda</span>
@@ -25,7 +25,7 @@
         </div>
 
         <div class="pb-4">
-          <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Guard & Care</p>
+          <p class="px-4 text-[10px] font-bold text-sigma-muted uppercase tracking-widest mb-3">Guard & Care</p>
           <router-link to="/guard/violations" class="nav-item">
             <ShieldAlert :size="20" />
             <span>Sigmaguard</span>
@@ -37,7 +37,7 @@
         </div>
 
         <div class="pb-4">
-          <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">System</p>
+          <p class="px-4 text-[10px] font-bold text-sigma-muted uppercase tracking-widest mb-3">System</p>
           <router-link to="/settings/global" class="nav-item">
             <Settings :size="20" />
             <span>Pengaturan</span>
@@ -45,17 +45,17 @@
         </div>
       </nav>
 
-      <div class="p-6 border-t border-white/10 bg-black/20">
+      <div class="p-6 border-t border-sigma-border bg-sigma-surface">
         <div class="flex items-center space-x-3 mb-4">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-sky-500 flex items-center justify-center font-bold">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-sky-500 flex items-center justify-center font-bold text-white">
             A
           </div>
           <div class="overflow-hidden">
             <p class="text-sm font-bold truncate">Administrator</p>
-            <p class="text-[10px] text-slate-500 truncate">admin@sigma.com</p>
+            <p class="text-[10px] text-sigma-muted truncate">admin@sigma.com</p>
           </div>
         </div>
-        <button @click="logout" class="w-full text-xs font-bold py-2 rounded-lg bg-white/5 hover:bg-red-500/10 hover:text-red-400 transition-all border border-white/5">
+        <button @click="logout" class="w-full text-xs font-bold py-2 rounded-lg bg-sigma-surface-alt hover:bg-red-500/10 hover:text-red-400 transition-all border border-sigma-border">
           LOGOUT
         </button>
       </div>
@@ -64,7 +64,7 @@
     <!-- Main Content -->
     <main class="flex-1 flex flex-col relative overflow-hidden">
       <!-- Topbar -->
-      <header class="h-16 border-b border-white/10 flex items-center justify-between px-8 bg-sigma-dark/50 backdrop-blur-md z-10">
+      <header class="h-16 border-b border-sigma-border flex items-center justify-between px-8 bg-sigma-surface/50 backdrop-blur-md z-10">
         <h2 class="text-sm font-bold text-slate-400 uppercase tracking-widest">{{ routeName }}</h2>
         <div class="flex items-center space-x-4">
           <Bell :size="18" class="text-slate-500 cursor-pointer" />

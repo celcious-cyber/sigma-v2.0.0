@@ -25,25 +25,11 @@
   --sigma-border: #e2e8f0; /* slate-200 */
 }
 
-.dark {
-  --sigma-app-bg: #020617; /* slate-950 */
-  --sigma-surface: rgba(255, 255, 255, 0.01);
-  --sigma-surface-alt: rgba(255, 255, 255, 0.03);
-  --sigma-text-main: #f8fafc; /* slate-50 */
-  --sigma-text-muted: #94a3b8; /* slate-400 */
-  --sigma-border: rgba(255, 255, 255, 0.05);
-}
-
 /* Base Styles */
 @layer base {
   body {
     @apply bg-sigma-app text-sigma-text font-inter antialiased transition-colors duration-300;
     min-height: 100vh;
-  }
-
-  /* Custom radial gradient for dark mode premium feel */
-  .dark body {
-    background-image: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
   }
 }
 
@@ -56,10 +42,6 @@
   .glass-card {
     @apply bg-sigma-surface backdrop-blur-lg border border-sigma-border rounded-[2.5rem] shadow-2xl;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-  }
-
-  .dark .glass-card {
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   }
 
   .premium-gradient-text {

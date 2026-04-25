@@ -3,29 +3,17 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   TrendingUp, BookOpen, Calendar, UserCheck, GraduationCap, Clock, 
-  CalendarRange, School, ArrowRight, Sun, Moon, ArrowLeft
+  CalendarRange, School, ArrowRight, ArrowLeft
 } from 'lucide-vue-next'
 import axios from 'axios'
 
 // State
 const router = useRouter()
-const isDark = ref(true)
 const stats = ref({
   total_subjects: 0,
   total_schedules: 0,
   total_attendance_today: 0
 })
-
-const toggleTheme = () => {
-  isDark.value = !isDark.value
-  if (isDark.value) {
-    document.documentElement.classList.add('dark')
-    localStorage.setItem('sigma_theme', 'dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-    localStorage.setItem('sigma_theme', 'light')
-  }
-}
 
 const isLoading = ref(true)
 const user = ref({ name: 'Admin', role: 'Administrator' })
@@ -45,8 +33,8 @@ onMounted(() => {
   const savedUser = localStorage.getItem('sigma_user')
   if (savedUser) user.value = JSON.parse(savedUser)
   
-  const savedTheme = localStorage.getItem('sigma_theme')
-  isDark.value = savedTheme !== 'light'
+  document.documentElement.classList.remove('dark')
+  localStorage.setItem('sigma_theme', 'light')
   
   fetchStats()
 })
@@ -61,18 +49,7 @@ onMounted(() => {
         <div class="h-10 w-1 bg-blue-500 rounded-full"></div>
         <h2 class="text-sm font-black uppercase tracking-[0.3em] text-sigma-muted">Academic Module</h2>
       </div>
-      
-      <div class="flex items-center gap-3">
-        <!-- Theme Toggle -->
-        <button @click="toggleTheme" 
-                class="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-sigma-surface border border-sigma-border text-sigma-text hover:border-blue-500/30 transition-all shadow-sm group">
-          <div class="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-            <Sun v-if="isDark" class="w-3.5 h-3.5" />
-            <Moon v-else class="w-3.5 h-3.5" />
-          </div>
-          <span class="text-[10px] font-black uppercase tracking-widest">{{ isDark ? 'Light' : 'Dark' }}</span>
-        </button>
-
+            <div class="flex items-center gap-3">
         <!-- Back to Portal -->
         <button @click="router.push('/portal')" 
                 class="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-sigma-surface border border-sigma-border text-sigma-muted hover:text-sigma-text hover:border-blue-500/30 transition-all group shadow-sm">
