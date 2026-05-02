@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { 
-  LayoutDashboard, CircleDollarSign, Receipt, 
-  CreditCard, History,
-  ChevronRight,
-  PanelLeftClose, PanelLeftOpen, Building2, FileText, Download
+  LayoutDashboard, Activity, Stethoscope, ClipboardList,
+  UserCheck, Thermometer, FlaskConical, History,
+  Database, Calendar, Bed, Pill, PackagePlus,
+  ChevronRight, PanelLeftClose, PanelLeftOpen,
+  FileText, Microscope
 } from 'lucide-vue-next'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -22,34 +23,50 @@ const toggleMenu = (name: string) => {
 }
 
 const menuItems = ref([
-  { name: 'Dashboard Flow', icon: LayoutDashboard, url: '/sigmaflow' },
+  { name: 'Dasbor Klinis', icon: LayoutDashboard, url: '/sigmacare' },
   { 
-    name: 'Faktur & Penagihan', 
-    icon: Receipt, 
+    name: 'Poliklinik & Observasi', 
+    icon: Stethoscope, 
     children: [
-      { name: 'Data Faktur', icon: FileText, url: '/sigmaflow/invoices' },
-      { name: 'Kategori Pembayaran', icon: Building2, url: '/sigmaflow/categories' },
-      { name: 'Riwayat Pembayaran', icon: History, url: '/sigmaflow/payments' },
+      { name: 'Anamnesis & Diagnosis', icon: ClipboardList, url: '/sigmacare/visits' },
+      { name: 'Observasi Klinis', icon: Bed, url: '/sigmacare/observations' },
+      { name: 'Sertifikasi Medis', icon: FileText, url: '/sigmacare/certificates' },
     ]
   },
   {
-    name: 'Arus Kas (Cashflow)',
-    icon: CircleDollarSign,
-    url: '/sigmaflow/cashflow'
+    name: 'Medical Check-Up',
+    icon: UserCheck,
+    children: [
+      { name: 'Prosedur Antropometri', icon: Activity, url: '/sigmacare/mcu/physical' },
+      { name: 'Profil Serologi', icon: Microscope, url: '/sigmacare/mcu/biometric' },
+      { name: 'Evaluasi Pertumbuhan', icon: Database, url: '/sigmacare/mcu/reports' },
+    ]
   },
   {
-    name: 'Laporan Keuangan',
-    icon: Download,
-    url: '/sigmaflow/reports'
+    name: 'Rekam Medis Elektronik',
+    icon: History,
+    children: [
+      { name: 'Riwayat Terintegrasi', icon: History, url: '/sigmacare/history' },
+      { name: 'Katalog Patologi', icon: Database, url: '/sigmacare/icd10' },
+    ]
   },
   {
-    name: 'Integrasi Payment',
-    icon: CreditCard,
-    url: '#'
+    name: 'Instalasi Farmasi',
+    icon: Pill,
+    children: [
+      { name: 'Inventaris Farmakologi', icon: Pill, url: '/sigmacare/pharmacy/inventory' },
+      { name: 'Mutasi Perbekalan', icon: PackagePlus, url: '/sigmacare/pharmacy/mutations' },
+    ]
+  },
+  {
+    name: 'Administrasi Faskes',
+    icon: Calendar,
+    children: [
+      { name: 'Kalender MCU', icon: Calendar, url: '/sigmacare/admin/calendar' },
+      { name: 'Manajemen Fasilitas', icon: Bed, url: '/sigmacare/admin/facilities' },
+    ]
   }
 ])
-
-const isDark = ref(true)
 
 // Computed active item based on route
 const currentActiveItem = computed(() => {
@@ -84,9 +101,6 @@ onMounted(() => {
   if (currentActiveParent.value && !openMenus.value.includes(currentActiveParent.value)) {
     openMenus.value.push(currentActiveParent.value)
   }
-  isDark.value = false
-  document.documentElement.classList.remove('dark')
-  localStorage.setItem('sigma_theme', 'light')
 })
 </script>
 
@@ -98,7 +112,7 @@ onMounted(() => {
     <!-- Toggle Button -->
     <button 
       @click="toggleSidebar"
-      class="absolute -right-3 top-10 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/40 hover:scale-110 transition-all z-50 border border-white/10"
+      class="absolute -right-3 top-10 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-rose-500/40 hover:scale-110 transition-all z-50 border border-white/10"
     >
       <PanelLeftClose v-if="!isCollapsed" class="w-3.5 h-3.5" />
       <PanelLeftOpen v-else class="w-3.5 h-3.5" />
@@ -108,10 +122,10 @@ onMounted(() => {
       <!-- Logo Section -->
       <div class="flex items-center gap-3 mb-10 overflow-hidden" :class="isCollapsed ? 'justify-center' : ''">
         <img src="/logo/SIGMA.svg" 
-             class="w-10 h-10 min-w-[2.5rem] drop-shadow-[0_0_8px_rgba(79,70,229,0.3)] cursor-pointer hover:scale-110 transition-transform filter hue-rotate-[110deg]" 
+             class="w-10 h-10 min-w-[2.5rem] drop-shadow-[0_0_8px_rgba(225,29,72,0.3)] cursor-pointer hover:scale-110 transition-transform filter hue-rotate-[320deg]" 
              alt="SIGMA Logo" 
              @click="router.push('/portal')" />
-        <h1 v-if="!isCollapsed" class="font-black text-xl tracking-tighter uppercase italic animate-in fade-in slide-in-from-left-4 duration-500 text-slate-800">Sigmaflow</h1>
+        <h1 v-if="!isCollapsed" class="font-black text-xl tracking-tighter uppercase italic animate-in fade-in slide-in-from-left-4 duration-500 text-slate-800">Sigma<span class="text-rose-600">care</span></h1>
       </div>
 
       <!-- Navigation -->
@@ -121,7 +135,7 @@ onMounted(() => {
             @click="item.children ? toggleMenu(item.name) : (item.url !== '#' && router.push(item.url))"
             class="w-full flex items-center p-3 rounded-xl transition-all group"
             :class="[
-              currentActiveItem === item.name || currentActiveParent === item.name ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'hover:bg-sigma-surface-alt text-sigma-muted hover:text-sigma-text',
+              currentActiveItem === item.name || currentActiveParent === item.name ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'hover:bg-sigma-surface-alt text-sigma-muted hover:text-sigma-text',
               isCollapsed ? 'justify-center' : 'justify-between'
             ]"
           >
@@ -143,7 +157,7 @@ onMounted(() => {
               :key="sub.name"
               @click="sub.url !== '#' && router.push(sub.url)"
               class="w-full flex items-center gap-3 p-2.5 rounded-lg text-xs font-bold transition-all text-left uppercase tracking-widest"
-              :class="currentActiveItem === sub.name ? 'text-indigo-600 bg-indigo-600/5' : 'text-sigma-muted hover:text-indigo-600 hover:bg-indigo-600/5'"
+              :class="currentActiveItem === sub.name ? 'text-rose-600 bg-rose-600/5' : 'text-sigma-muted hover:text-rose-600 hover:bg-rose-600/5'"
             >
               <component :is="sub.icon" class="w-3.5 h-3.5" />
               {{ sub.name }}
@@ -159,6 +173,6 @@ onMounted(() => {
 <style scoped>
 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(79, 70, 229, 0.1); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(79, 70, 229, 0.2); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(225, 29, 72, 0.1); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(225, 29, 72, 0.2); }
 </style>

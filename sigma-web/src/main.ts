@@ -4,6 +4,8 @@ import App from './App.vue'
 import router from './router'
 import axios from 'axios'
 
+axios.defaults.baseURL = 'http://127.0.0.1:3000/api/v1'
+
 // Global Axios Configuration - Auto inject JWT Token
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('sigma_token')

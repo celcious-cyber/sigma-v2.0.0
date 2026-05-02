@@ -6,7 +6,7 @@ import {
 import axios from 'axios'
 
 // Config API
-const API_URL = '/api/v1/admin/base/units'
+const API_URL = '/admin/base/units'
 
 // State
 const units = ref<any[]>([])

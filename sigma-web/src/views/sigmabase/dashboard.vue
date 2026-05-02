@@ -26,7 +26,7 @@ const stats = ref<any>({
 
 const fetchStats = async () => {
   try {
-    const response = await axios.get('/api/v1/admin/base/stats')
+    const response = await axios.get('/admin/base/stats')
     stats.value = response.data
   } catch (err) {
     console.error('Gagal mengambil statistik:', err)
@@ -114,7 +114,7 @@ const teacherChartSeries = computed(() => stats.value.chart_teacher_status.map((
 const recentStudents = ref<any[]>([])
 const fetchRecentStudents = async () => {
   try {
-    const response = await axios.get('/api/v1/admin/base/students')
+    const response = await axios.get('/admin/base/students')
     recentStudents.value = response.data.slice(0, 5)
   } catch (err) {
     console.error('Gagal mengambil data santri:', err)

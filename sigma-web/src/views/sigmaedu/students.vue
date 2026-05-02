@@ -27,8 +27,8 @@ const fetchData = async () => {
   isLoading.value = true
   try {
     const [stRes, clRes] = await Promise.all([
-      axios.get('/api/v1/admin/base/students'),
-      axios.get('/api/v1/admin/edu/classrooms')
+      axios.get('/admin/base/students'),
+      axios.get('/admin/edu/classrooms')
     ])
     students.value = stRes.data
     classrooms.value = clRes.data
@@ -49,7 +49,7 @@ const handleUpdateClass = async () => {
   if (!selectedStudent.value) return
   isSubmitting.value = true
   try {
-    await axios.post('/api/v1/admin/edu/students/assign', {
+    await axios.post('/admin/edu/students/assign', {
       student_ids: [selectedStudent.value.ID],
       classroom_id: newClassroomID.value
     })

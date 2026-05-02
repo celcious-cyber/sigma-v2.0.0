@@ -25,7 +25,7 @@ const user = ref({ name: 'User', role: 'Loading...', avatar: '' })
 
 const fetchUser = async () => {
   try {
-    const res = await axios.get('/api/v1/auth/me')
+    const res = await axios.get('/auth/me')
     const data = res.data.data
     user.value = {
       name: data.name,

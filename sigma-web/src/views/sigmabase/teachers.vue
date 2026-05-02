@@ -11,7 +11,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 // Config API
-const API_URL = '/api/v1/admin/base/teachers'
+const API_URL = '/admin/base/teachers'
 
 // State
 const isModalOpen = ref(false)

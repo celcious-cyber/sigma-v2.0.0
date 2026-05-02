@@ -67,9 +67,9 @@ watch(form, saveToLocal, { deep: true })
 const fetchData = async () => {
   try {
     const [clRes, sbRes, hrRes] = await Promise.all([
-      axios.get('/api/v1/admin/edu/classrooms'),
-      axios.get('/api/v1/admin/edu/subjects'),
-      axios.get('/api/v1/admin/edu/hours')
+      axios.get('/admin/edu/classrooms'),
+      axios.get('/admin/edu/subjects'),
+      axios.get('/admin/edu/hours')
     ])
     classrooms.value = clRes.data
     subjects.value = sbRes.data
@@ -134,7 +134,7 @@ const loadJournals = async () => {
       classroom_id: filters.value.classroom_id,
       subject_id: filters.value.subject_id
     }
-    const res = await axios.get('/api/v1/admin/edu/journals', { params })
+    const res = await axios.get('/admin/edu/journals', { params })
     journals.value = res.data
   } catch (err) {
     console.error('Gagal memuat jurnal:', err)
@@ -146,7 +146,7 @@ const loadJournals = async () => {
 const copyLastWeek = async () => {
     if (!form.value.subject_id) return
     try {
-        const res = await axios.get('/api/v1/admin/edu/journals/last', {
+        const res = await axios.get('/admin/edu/journals/last', {
             params: { subject_id: form.value.subject_id }
         })
         const last = res.data
@@ -224,7 +224,7 @@ const handleSave = async () => {
     if (editingId.value) {
         await axios.put(`/api/v1/admin/edu/journals/${editingId.value}`, payload)
     } else {
-        await axios.post('/api/v1/admin/edu/journals', payload)
+        await axios.post('/admin/edu/journals', payload)
     }
     
     toastMessage.value = editingId.value ? 'Jurnal Berhasil Diperbarui!' : 'Jurnal Berhasil Disimpan!'

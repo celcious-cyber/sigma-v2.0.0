@@ -4,9 +4,33 @@ import {
   Plus, Search, 
   Trash2, AlertCircle, CheckCircle2, X, Edit3,
   FileText, TrendingUp,
-  Filter, ChevronRight, Receipt, Download, 
-  ExternalLink, ChevronLeft
+  ExternalLink, ChevronLeft, Wallet, Clock, Printer,
+  Cog
 } from 'lucide-vue-next'
+
+const invoiceSettings = ref({
+  schoolName: 'PONDOK PESANTREN SIGMA EDU',
+  address: 'Jl. Raya Digital No. 101, Kota Teknologi, Indonesia',
+  phone: '(021) 1234-5678',
+  email: 'info@sigmaedu.sch.id',
+  adminName: 'Admin Keuangan SigmaEDU',
+  adminTitle: 'Bendahara Utama'
+})
+
+const showSettingsModal = ref(false)
+
+const loadInvoiceSettings = () => {
+  const saved = localStorage.getItem('sigma_invoice_settings')
+  if (saved) {
+    invoiceSettings.value = JSON.parse(saved)
+  }
+}
+
+const saveInvoiceSettings = () => {
+  localStorage.setItem('sigma_invoice_settings', JSON.stringify(invoiceSettings.value))
+  showSettingsModal.value = false
+  alert('Pengaturan faktur berhasil disimpan!')
+}
 
 const closeSuggestions = () => {
   setTimeout(() => {
@@ -39,6 +63,86 @@ const bulkForm = ref({
   target: 'all', // all | classroom
   classroom_id: ''
 })
+
+// Cashier Logic
+const showCashierModal = ref(false)
+const cashierSearch = ref('')
+const cashierStudents = ref<any[]>([])
+const selectedCashierStudent = ref<any>(null)
+const cashierUnpaidInvoices = ref<any[]>([])
+const paymentAmount = ref(0)
+const currentPayInvoice = ref<any>(null)
+const cashierLoading = ref(false)
+
+const searchCashierStudents = async () => {
+  if (cashierSearch.value.length < 2) {
+    cashierStudents.value = []
+    return
+  }
+  cashierLoading.value = true
+  try {
+    const res = await axios.get(`/api/v1/admin/base/students?search=${cashierSearch.value}`)
+    cashierStudents.value = Array.isArray(res.data) ? res.data : []
+  } catch (err) {
+    console.error('Failed to search students', err)
+  } finally {
+    cashierLoading.value = false
+  }
+}
+
+const selectCashierStudent = async (student: any) => {
+  selectedCashierStudent.value = student
+  cashierStudents.value = []
+  cashierSearch.value = ''
+  
+  cashierLoading.value = true
+  try {
+    const res = await axios.get(`/api/v1/admin/flow/invoices`)
+    cashierUnpaidInvoices.value = res.data.filter((inv: any) => 
+      (inv.student_id === student.ID || inv.student_id === student.id) && inv.status !== 'Paid'
+    )
+  } catch (err) {
+    console.error('Failed to fetch invoices', err)
+  } finally {
+    cashierLoading.value = false
+  }
+}
+
+const openPayModal = (inv: any) => {
+  currentPayInvoice.value = inv
+  paymentAmount.value = inv.remaining || inv.amount
+}
+
+const processManualPayment = async () => {
+  if (!currentPayInvoice.value || paymentAmount.value <= 0) {
+    alert('Nominal pembayaran tidak valid')
+    return
+  }
+  
+  isSubmitting.value = true
+  try {
+    const settings = JSON.parse(localStorage.getItem('sigma_invoice_settings') || '{}')
+    const adminName = settings.adminName || 'Admin'
+
+    await axios.post('/admin/flow/payments/manual', {
+      invoice_id: currentPayInvoice.value.id || currentPayInvoice.value.ID,
+      amount: paymentAmount.value,
+      method: 'Cash / Tunai',
+      admin_name: adminName
+    })
+    
+    alert('Pembayaran berhasil dicatat!')
+    currentPayInvoice.value = null
+    if (selectedCashierStudent.value) {
+      await selectCashierStudent(selectedCashierStudent.value)
+    }
+    await fetchInvoices()
+  } catch (err: any) {
+    alert('Gagal memproses pembayaran: ' + (err.response?.data?.error || err.message))
+  } finally {
+    isSubmitting.value = false
+  }
+}
 
 const newInvoice = ref({
   student_id: '',
@@ -114,9 +218,17 @@ const summary = computed(() => {
   }
 })
 
+const currentPrintInvoice = ref<any>(null)
+const printInvoice = (inv: any) => {
+  currentPrintInvoice.value = inv
+  setTimeout(() => {
+    window.print()
+  }, 500)
+}
+
 const fetchCategories = async () => {
   try {
-    const res = await axios.get('/api/v1/admin/flow/categories')
+    const res = await axios.get('/admin/flow/categories')
     if (Array.isArray(res.data)) {
       categories.value = res.data.map((c: any) => ({ 
         id: c.ID || c.id, 
@@ -137,7 +249,7 @@ const fetchCategories = async () => {
 const fetchInvoices = async () => {
   isLoading.value = true
   try {
-    const res = await axios.get('/api/v1/admin/flow/invoices')
+    const res = await axios.get('/admin/flow/invoices')
     invoices.value = Array.isArray(res.data) ? res.data : []
   } catch (err) {
     console.error('Failed to fetch invoices', err)
@@ -214,7 +326,7 @@ const submitInvoice = async () => {
     }
     
     if (modalMode.value === 'create') {
-      await axios.post('/api/v1/admin/flow/invoices', payload)
+      await axios.post('/admin/flow/invoices', payload)
     } else {
       await axios.put(`/api/v1/admin/flow/invoices/${editingId.value}`, payload)
     }
@@ -249,7 +361,7 @@ const handleBulkCategoryChange = () => {
 
 const fetchClassrooms = async () => {
   try {
-    const res = await axios.get('/api/v1/admin/base/classrooms')
+    const res = await axios.get('/admin/base/classrooms')
     classrooms.value = Array.isArray(res.data) ? res.data : []
   } catch (err) {
     console.error('Failed to fetch classrooms', err)
@@ -269,7 +381,7 @@ const submitBulkInvoices = async () => {
 
   isSubmitting.value = true
   try {
-    const res = await axios.post('/api/v1/admin/flow/invoices/bulk', {
+    const res = await axios.post('/admin/flow/invoices/bulk', {
       payment_category_id: Number(bulkForm.value.payment_category_id),
       amount: bulkForm.value.amount,
       due_date: bulkForm.value.due_date,
@@ -335,6 +447,7 @@ const filterLabels: Record<string, string> = {
 }
 
 onMounted(async () => {
+  loadInvoiceSettings()
   await fetchCategories()
   await fetchInvoices()
   await fetchClassrooms()
@@ -359,8 +472,11 @@ onMounted(async () => {
             <p class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Daftar faktur santri &amp; status pembayaran</p>
           </div>
         </div>
-        
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 text-right">
+          <button @click="showSettingsModal = true" class="flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl transition-all shadow-xl shadow-slate-200/50 group" title="Pengaturan Faktur">
+            <Cog class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-600">Identitas</span>
+          </button>
           <button class="flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl transition-all shadow-xl shadow-slate-200/50">
             <Download class="w-4 h-4 text-slate-400" />
             <span class="text-[10px] font-black uppercase tracking-widest text-slate-600">Export PDF</span>
@@ -368,6 +484,10 @@ onMounted(async () => {
           <button @click="showBulkModal = true" class="flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-2xl transition-all shadow-xl shadow-slate-200/50">
             <Plus class="w-4 h-4 text-indigo-500" />
             <span class="text-[10px] font-black uppercase tracking-widest text-slate-600">Tagih Massal</span>
+          </button>
+          <button @click="showCashierModal = true" class="flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 hover:bg-emerald-50 rounded-2xl transition-all shadow-xl shadow-slate-200/50 group">
+            <Wallet class="w-4 h-4 text-emerald-500" />
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-600 group-hover:text-emerald-600">Bayar Tunai</span>
           </button>
           <button @click="openCreateModal" class="flex items-center gap-3 px-6 py-3 bg-[#0F2942] hover:bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-600/20 transition-all active:scale-95">
             <Plus class="w-4 h-4" />
@@ -474,6 +594,9 @@ onMounted(async () => {
                   </td>
                   <td class="py-6 px-6 text-right">
                     <p class="text-xs font-black text-slate-900 italic">{{ inv.amount_formatted }}</p>
+                    <p v-if="inv.status === 'Partial'" class="text-[9px] font-bold text-rose-500 uppercase tracking-tighter mt-1">
+                      Sisa: {{ inv.remaining_formatted }}
+                    </p>
                   </td>
                   <td class="py-6 px-6">
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ inv.due_date }}</p>
@@ -488,11 +611,17 @@ onMounted(async () => {
                   </td>
                   <td class="py-6 px-10 text-right">
                     <div class="flex items-center justify-end gap-2">
-                      <button v-if="inv.payment_url" @click="openPaymentLink(inv.payment_url)" title="Bayar Sekarang" class="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                      <button v-if="inv.status !== 'Paid'" @click="showCashierModal = true; selectCashierStudent(inv.student); openPayModal(inv)" title="Bayar Manual" class="p-2 text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all">
+                        <Wallet class="w-4 h-4" />
+                      </button>
+                      <button v-if="inv.payment_url" @click="openPaymentLink(inv.payment_url)" title="Bayar Online" class="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
                         <ExternalLink class="w-4 h-4" />
                       </button>
                       <button @click="openEditModal(inv)" title="Edit Faktur" class="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
                         <Edit3 class="w-4 h-4" />
+                      </button>
+                      <button @click="printInvoice(inv)" title="Cetak Faktur" class="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                        <Printer class="w-4 h-4" />
                       </button>
                       <button @click="deleteInvoice(inv.id || inv.ID)" title="Hapus Faktur" class="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
                         <Trash2 class="w-4 h-4" />
@@ -692,9 +821,333 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+
+      <!-- Cashier Modal (Merged) -->
+      <div v-if="showCashierModal" class="modal-overlay" @click.self="showCashierModal = false">
+        <div class="modal-container !max-w-[60rem] !rounded-[3.5rem] flex flex-col md:flex-row overflow-hidden">
+          <!-- Left Side: Search & Info -->
+          <div class="md:w-5/12 bg-slate-50 p-10 border-r border-slate-100 flex flex-col">
+            <div class="mb-8">
+              <h3 class="text-xl font-black text-slate-900 italic uppercase mb-1">Kasir <span class="text-emerald-600">Tunai</span></h3>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Cari santri untuk bayar tagihan</p>
+            </div>
+
+            <div class="relative mb-6">
+              <Search class="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input v-model="cashierSearch" @input="searchCashierStudents" type="text" placeholder="NIS atau Nama..." 
+                     class="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-[1.5rem] text-sm focus:ring-2 focus:ring-emerald-500/20 transition-all font-bold outline-none" />
+            </div>
+
+            <!-- Student Results -->
+            <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+              <button v-for="s in cashierStudents" :key="s.id" @click="selectCashierStudent(s)"
+                      class="w-full p-4 rounded-2xl border border-white hover:border-emerald-200 hover:bg-emerald-50 text-left transition-all group flex items-center justify-between bg-white shadow-sm">
+                <div>
+                  <p class="text-[10px] font-black text-slate-800 uppercase">{{ s.name }}</p>
+                  <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">NIS: {{ s.nis }}</p>
+                </div>
+                <ChevronRight class="w-3 h-3 text-slate-300 group-hover:text-emerald-500" />
+              </button>
+            </div>
+
+            <!-- Selected Student -->
+            <div v-if="selectedCashierStudent" class="mt-8 p-6 bg-emerald-600 rounded-[2rem] text-white shadow-xl shadow-emerald-600/20 animate-in fade-in slide-in-from-bottom-4">
+              <p class="text-[8px] font-black uppercase tracking-widest text-emerald-100 mb-2">Santri Terpilih</p>
+              <h4 class="text-sm font-black uppercase italic truncate">{{ selectedCashierStudent.name }}</h4>
+              <p class="text-[9px] font-bold text-emerald-200 uppercase tracking-widest mb-4">NIS: {{ selectedCashierStudent.nis }}</p>
+              <div class="p-3 bg-white/10 rounded-xl border border-white/10">
+                <p class="text-[7px] font-black uppercase tracking-widest text-emerald-100 mb-1">Kelas</p>
+                <p class="text-[10px] font-black">{{ selectedCashierStudent.classroom?.name || '-' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Side: Invoices & Payment -->
+          <div class="md:w-7/12 bg-white p-10 flex flex-col">
+            <div class="flex items-center justify-between mb-8">
+              <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest">Daftar Tagihan</h3>
+              <button @click="showCashierModal = false" class="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all">
+                <X class="w-5 h-5" />
+              </button>
+            </div>
+
+            <!-- Invoices List -->
+            <div v-if="!selectedCashierStudent" class="flex-1 flex flex-col items-center justify-center text-slate-200">
+               <Receipt class="w-16 h-16 mb-4 opacity-10" />
+               <p class="text-[10px] font-black uppercase tracking-widest">Silakan pilih santri</p>
+            </div>
+
+            <div v-else-if="cashierUnpaidInvoices.length === 0" class="flex-1 flex flex-col items-center justify-center text-emerald-500">
+               <CheckCircle2 class="w-16 h-16 mb-4 opacity-20" />
+               <p class="text-[10px] font-black uppercase tracking-widest">Semua Tagihan Lunas</p>
+            </div>
+
+            <div v-else class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+              <div v-for="inv in cashierUnpaidInvoices" :key="inv.id" 
+                   @click="openPayModal(inv)"
+                   :class="currentPayInvoice?.id === inv.id ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-100 hover:border-emerald-200'"
+                   class="p-5 border-2 rounded-3xl cursor-pointer transition-all flex items-center justify-between group">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                    <Receipt class="w-5 h-5 text-slate-400 group-hover:text-emerald-500" />
+                  </div>
+                  <div>
+                    <p class="text-[10px] font-black text-slate-800 uppercase">{{ inv.category }}</p>
+                    <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{{ inv.due_date }}</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-black text-slate-900 italic">{{ inv.remaining_formatted || inv.amount_formatted }}</p>
+                  <span v-if="inv.status === 'Partial'" class="text-[7px] font-black text-emerald-500 uppercase bg-emerald-50 px-2 rounded-full border border-emerald-100">Dicicil</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment Input -->
+            <div v-if="currentPayInvoice" class="mt-8 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 animate-in zoom-in-95">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Input Nominal Bayar</span>
+                <span class="text-[9px] font-bold text-rose-500 uppercase">Sisa: {{ currentPayInvoice.remaining_formatted }}</span>
+              </div>
+              <div class="relative mb-4">
+                <input v-model="paymentAmount" type="number" 
+                       class="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl text-xl font-black italic text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500/20" />
+              </div>
+              <div v-if="paymentAmount < currentPayInvoice.remaining" class="flex gap-2 mb-6">
+                <Clock class="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+                <p class="text-[8px] font-bold text-amber-600 uppercase leading-tight">Akan dicatat sebagai pembayaran cicilan (Partial)</p>
+              </div>
+              <button @click="processManualPayment" :disabled="isSubmitting" 
+                      class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all active:scale-95 flex items-center justify-center gap-3">
+                <CheckCircle2 v-if="!isSubmitting" class="w-4 h-4" />
+                <div v-else class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Konfirmasi Bayar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Printable Invoice Section (Formal Classic Design) -->
+    <!-- Printable Invoice Section (New A5 Design) -->
+    <Teleport to="body">
+      <div v-if="currentPrintInvoice" class="print-only hidden print:flex items-center justify-center min-h-screen bg-gray-100 p-4 print:p-0 print:bg-white font-sans text-slate-800">
+        <!-- Kertas A5 (148mm x 210mm) -->
+        <div class="bg-white shadow-lg print:shadow-none w-[148mm] h-[210mm] p-[10mm] flex flex-col text-sm mx-auto box-border overflow-hidden relative border border-slate-100 print:border-none">
+          
+          <!-- HEADER -->
+          <header class="flex justify-between items-start border-b-2 border-slate-200 pb-4 mb-4">
+            <div>
+              <h1 class="text-xl font-black text-indigo-700 tracking-tight italic uppercase">Bukti Pembayaran</h1>
+              <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{{ invoiceSettings.schoolName }}</p>
+            </div>
+            <div class="text-right">
+              <span v-if="currentPrintInvoice.status === 'Paid'" class="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 font-black text-[10px] rounded-full border border-emerald-200 uppercase tracking-widest">
+                LUNAS
+              </span>
+              <span v-else-if="currentPrintInvoice.status === 'Partial'" class="inline-block px-3 py-1 bg-amber-100 text-amber-700 font-black text-[10px] rounded-full border border-amber-200 uppercase tracking-widest">
+                CICILAN
+              </span>
+              <span v-else class="inline-block px-3 py-1 bg-rose-100 text-rose-700 font-black text-[10px] rounded-full border border-rose-200 uppercase tracking-widest">
+                BELUM BAYAR
+              </span>
+            </div>
+          </header>
+
+          <!-- INFO FAKTUR & IDENTITAS -->
+          <section class="flex justify-between gap-4 mb-6">
+            <!-- Info Faktur -->
+            <div class="w-1/2 space-y-1.5 text-[11px]">
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-bold uppercase tracking-tighter w-16">No. Faktur</span>
+                <span class="font-black text-slate-900">: {{ currentPrintInvoice.invoice_number }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-bold uppercase tracking-tighter w-16">Tanggal</span>
+                <span class="font-bold">: {{ new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-bold uppercase tracking-tighter w-16">Admin</span>
+                <span class="font-bold">: {{ invoiceSettings.adminName }}</span>
+              </div>
+            </div>
+            <!-- Info Santri -->
+            <div class="w-1/2 space-y-1.5 text-[11px]">
+              <p class="font-black text-slate-400 text-[9px] uppercase tracking-widest mb-2 border-b border-slate-200 pb-1">Ditagihkan Kepada:</p>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-bold uppercase tracking-tighter w-10">Nama</span>
+                <span class="font-black text-slate-900">: {{ currentPrintInvoice.student_name }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-bold uppercase tracking-tighter w-10">NIS</span>
+                <span class="font-bold">: {{ currentPrintInvoice.student?.nis || '-' }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-bold uppercase tracking-tighter w-10">Kelas</span>
+                <span class="font-bold uppercase">: {{ currentPrintInvoice.student?.classroom?.name || '-' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- TABEL RINCIAN -->
+          <main class="flex-grow">
+            <table class="w-full text-left text-[11px] border-collapse">
+              <thead>
+                <tr class="bg-slate-900 text-white border-y border-slate-900">
+                  <th class="py-2.5 px-3 font-black uppercase tracking-widest w-8 text-center">No</th>
+                  <th class="py-2.5 px-3 font-black uppercase tracking-widest">Deskripsi Tagihan</th>
+                  <th class="py-2.5 px-3 font-black uppercase tracking-widest text-right">Nominal</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr>
+                  <td class="py-4 px-3 text-center text-slate-400 font-bold">1</td>
+                  <td class="py-4 px-3">
+                    <p class="font-black text-slate-900 uppercase tracking-tight">{{ currentPrintInvoice.category }}</p>
+                    <p class="text-[9px] text-slate-400 italic mt-0.5">{{ currentPrintInvoice.description || 'Pembayaran biaya pendidikan santri.' }}</p>
+                  </td>
+                  <td class="py-4 px-3 text-right font-black text-slate-900">
+                    {{ currentPrintInvoice.amount_formatted }}
+                  </td>
+                </tr>
+                <!-- Spacer rows to fill space -->
+                <tr v-for="i in 3" :key="i" class="opacity-10 border-none">
+                  <td class="py-4 text-transparent">.</td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </main>
+
+          <!-- SUMMARY & FOOTER -->
+          <footer class="mt-auto pt-6 border-t-2 border-slate-900">
+            <!-- Kalkulasi Total -->
+            <div class="flex justify-end mb-6">
+              <div class="w-1/2 space-y-1 text-[11px]">
+                <div v-if="currentPrintInvoice.status === 'Partial'" class="flex justify-between text-slate-500 px-2 font-bold uppercase tracking-tighter">
+                  <span>Telah Dibayar:</span>
+                  <span class="text-emerald-600">- {{ currentPrintInvoice.paid_formatted }}</span>
+                </div>
+                <div class="flex justify-between font-black text-sm text-indigo-700 bg-indigo-50 px-3 py-2 rounded-xl mt-2 border border-indigo-100 uppercase tracking-tighter">
+                  <span>{{ currentPrintInvoice.status === 'Paid' ? 'TOTAL LUNAS:' : 'SISA TAGIHAN:' }}</span>
+                  <span>{{ currentPrintInvoice.status === 'Paid' ? currentPrintInvoice.amount_formatted : currentPrintInvoice.remaining_formatted }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Catatan & Tanda Tangan -->
+            <div class="border-t border-dashed border-slate-200 pt-4 flex justify-between items-end text-[9px] text-slate-400">
+              <div class="max-w-[60%] space-y-1">
+                <p class="font-black text-slate-600 uppercase tracking-widest mb-1">Catatan:</p>
+                <p>Pembayaran telah dibukukan secara sistem. Simpan faktur ini sebagai bukti sah.</p>
+                <p class="mt-1 font-bold italic">Dicetak pada: {{ new Date().toLocaleString('id-ID') }} WIB</p>
+              </div>
+              <div class="text-center min-w-[100px]">
+                <p class="mb-10 font-bold uppercase tracking-widest text-slate-500">{{ invoiceSettings.adminTitle }}</p>
+                <p class="font-black text-slate-900 border-t border-slate-900 pt-1 px-4 uppercase tracking-tighter">{{ invoiceSettings.adminName }}</p>
+              </div>
+            </div>
+          </footer>
+          
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Invoice Settings Modal -->
+
+    <!-- Invoice Settings Modal -->
+    <Teleport to="body">
+      <div v-if="showSettingsModal" class="modal-overlay" @click.self="showSettingsModal = false">
+        <div class="modal-container">
+          <div class="p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div>
+              <h3 class="text-2xl font-black text-slate-900 italic uppercase">Pengaturan <span class="text-indigo-600">Identitas</span></h3>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Kustomisasi Kop & Petugas Faktur</p>
+            </div>
+            <button @click="showSettingsModal = false" class="p-3 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all border border-slate-100 shadow-sm">
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="p-10 space-y-6">
+            <div class="space-y-2">
+              <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Instansi / Sekolah</label>
+              <input v-model="invoiceSettings.schoolName" type="text" class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[1.5rem] text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none font-bold" />
+            </div>
+            <div class="space-y-2">
+              <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alamat Lengkap</label>
+              <textarea v-model="invoiceSettings.address" rows="2" class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[1.5rem] text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nomor Telepon</label>
+                <input v-model="invoiceSettings.phone" type="text" class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[1.5rem] text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none" />
+              </div>
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
+                <input v-model="invoiceSettings.email" type="text" class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[1.5rem] text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Petugas Keuangan</label>
+                <input v-model="invoiceSettings.adminName" type="text" class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[1.5rem] text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none font-bold" />
+              </div>
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jabatan</label>
+                <input v-model="invoiceSettings.adminTitle" type="text" class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[1.5rem] text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none" />
+              </div>
+            </div>
+          </div>
+          <div class="p-10 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-4">
+            <button @click="showSettingsModal = false" class="px-8 py-4 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-100 transition-all">Batal</button>
+            <button @click="saveInvoiceSettings" class="px-10 py-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-3">
+              <CheckCircle2 class="w-4 h-4" />
+              Simpan Pengaturan
+            </button>
+          </div>
+        </div>
+      </div>
     </Teleport>
   </div>
 </template>
+
+<style>
+@media print {
+  /* Konfigurasi Halaman A5 */
+  @page {
+    size: A5 portrait;
+    margin: 0;
+  }
+
+  /* Sembunyikan seluruh aplikasi utama (GLOBAL) */
+  #app, .no-print {
+    display: none !important;
+  }
+
+  /* Reset Body */
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Tampilkan area cetak */
+  .print-only {
+    display: flex !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    height: 100vh !important;
+    padding: 0 !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+</style>
 
 <style scoped>
 .animate-reveal {

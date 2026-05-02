@@ -185,6 +185,24 @@ const routes = [
         name: 'FlowCategories',
         component: () => import('../views/sigmaflow/categories.vue'),
         meta: { title: 'Kategori Pembayaran' }
+      },
+      {
+        path: 'payments',
+        name: 'FlowPayments',
+        component: () => import('../views/sigmaflow/payments.vue'),
+        meta: { title: 'Riwayat Pembayaran' }
+      },
+      {
+        path: 'cashflow',
+        name: 'FlowCashflow',
+        component: () => import('../views/sigmaflow/cashflow.vue'),
+        meta: { title: 'Arus Kas' }
+      },
+      {
+        path: 'reports',
+        name: 'FlowReports',
+        component: () => import('../views/sigmaflow/reports.vue'),
+        meta: { title: 'Laporan Keuangan' }
       }
     ]
   },
@@ -197,6 +215,50 @@ const routes = [
         path: 'violations',
         name: 'Violations',
         component: () => import('../views/sigmaguard/dashboard.vue')
+      }
+    ]
+  },
+  // Sigmacare
+  {
+    path: '/sigmacare',
+    component: () => import('../layouts/SigmacareLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'CareDashboard',
+        component: () => import('../views/sigmacare/dashboard.vue'),
+        meta: { title: 'Dasbor Klinis' }
+      },
+      {
+        path: 'visits',
+        name: 'CareVisits',
+        component: () => import('../views/sigmacare/visits.vue'),
+        meta: { title: 'Anamnesis & Diagnosis' }
+      },
+      {
+        path: 'observations',
+        name: 'CareObservations',
+        component: () => import('../views/sigmacare/observations.vue'),
+        meta: { title: 'Observasi Klinis' }
+      },
+      {
+        path: 'certificates',
+        name: 'CareCertificates',
+        component: () => import('../views/sigmacare/certificates.vue'),
+        meta: { title: 'Sertifikasi Medis' }
+      },
+      {
+        path: 'mcu/physical',
+        name: 'CareMCUPhysical',
+        component: () => import('../views/sigmacare/mcu-physical.vue'),
+        meta: { title: 'Prosedur Antropometri' }
+      },
+      {
+        path: 'pharmacy/inventory',
+        name: 'CarePharmacyInventory',
+        component: () => import('../views/sigmacare/pharmacy-inventory.vue'),
+        meta: { title: 'Inventaris Farmakologi' }
       }
     ]
   }

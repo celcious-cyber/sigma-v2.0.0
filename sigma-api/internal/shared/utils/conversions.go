@@ -12,3 +12,12 @@ func StringToUint(s string) uint {
 	}
 	return uint(u)
 }
+
+// StringToInt converts a string to int, returns 0 if invalid
+func StringToInt(s string) int {
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return i
+}

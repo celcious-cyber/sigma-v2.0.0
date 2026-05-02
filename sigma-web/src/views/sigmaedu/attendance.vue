@@ -43,8 +43,8 @@ const attendanceMap = ref<Record<number, string>>({}) // studentId -> status
 const fetchData = async () => {
   try {
     const [clRes, sbRes] = await Promise.all([
-      axios.get('/api/v1/admin/edu/classrooms'),
-      axios.get('/api/v1/admin/edu/subjects')
+      axios.get('/admin/edu/classrooms'),
+      axios.get('/admin/edu/subjects')
     ])
     classrooms.value = clRes.data
     subjects.value = sbRes.data
@@ -73,7 +73,7 @@ const loadClassData = async () => {
     }
     if (filters.value.subject_id) params.subject_id = filters.value.subject_id
     
-    const atRes = await axios.get('/api/v1/admin/edu/attendance', { params })
+    const atRes = await axios.get('/admin/edu/attendance', { params })
     attendances.value = atRes.data
 
     // 3. Map status
@@ -103,7 +103,7 @@ const loadHistoryData = async () => {
     }
     if (filters.value.subject_id) params.subject_id = filters.value.subject_id
     
-    const res = await axios.get('/api/v1/admin/edu/attendance/report', { params })
+    const res = await axios.get('/admin/edu/attendance/report', { params })
     historyData.value = res.data
   } catch (err) {
     console.error('Gagal memuat history:', err)
@@ -129,7 +129,7 @@ const handleSave = async () => {
       status: attendanceMap.value[s.ID]
     }))
 
-    await axios.post('/api/v1/admin/edu/attendance/bulk', payload)
+    await axios.post('/admin/edu/attendance/bulk', payload)
     
     toastMessage.value = 'Presensi Berhasil Disimpan!'
     toastType.value = 'success'

@@ -48,7 +48,7 @@ const quranSurahs = [
 
 const fetchData = async () => {
   try {
-    const clRes = await axios.get('/api/v1/admin/edu/classrooms')
+    const clRes = await axios.get('/admin/edu/classrooms')
     classrooms.value = clRes.data
     if (classrooms.value.length > 0 && !filters.value.classroom_id) {
       filters.value.classroom_id = classrooms.value[0].ID
@@ -66,10 +66,10 @@ const loadTahfidzData = async () => {
     if (filters.value.classroom_id) {
        stRes = await axios.get(`/api/v1/admin/edu/classrooms/${filters.value.classroom_id}/students`)
     } else {
-       stRes = await axios.get('/api/v1/admin/base/students')
+       stRes = await axios.get('/admin/base/students')
     }
     
-    const tfRes = await axios.get('/api/v1/admin/edu/tahfidz', { params: { classroom_id: filters.value.classroom_id, date: filters.value.date } })
+    const tfRes = await axios.get('/admin/edu/tahfidz', { params: { classroom_id: filters.value.classroom_id, date: filters.value.date } })
     
     students.value = stRes.data
     records.value = tfRes.data
@@ -211,7 +211,7 @@ const savePersonalTahfidz = async () => {
       }
     }).filter(e => e.surah_name !== '')
 
-    await axios.post('/api/v1/admin/edu/tahfidz/bulk', payload)
+    await axios.post('/admin/edu/tahfidz/bulk', payload)
     await loadTahfidzData()
     await fetchStudentHistory(selectedStudent.value.ID)
     showPersonalModal.value = false
@@ -245,7 +245,7 @@ const saveBulkTahfidz = async () => {
       }
     }).filter(e => e.surah_name !== '')
 
-    await axios.post('/api/v1/admin/edu/tahfidz/bulk', payload)
+    await axios.post('/admin/edu/tahfidz/bulk', payload)
     
     // Sync main page filter with the class we just saved
     filters.value.classroom_id = bulkForm.value.classroom_id

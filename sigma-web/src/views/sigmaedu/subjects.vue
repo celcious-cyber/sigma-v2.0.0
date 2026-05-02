@@ -27,7 +27,7 @@ const form = ref({
 
 const fetchSubjects = async () => {
   try {
-    const response = await axios.get('/api/v1/admin/edu/subjects')
+    const response = await axios.get('/admin/edu/subjects')
     subjects.value = response.data
   } catch (err) {
     console.error('Gagal mengambil data mapel:', err)
@@ -57,7 +57,7 @@ const handleSubmit = async () => {
     if (editingId.value) {
       await axios.put(`/api/v1/admin/edu/subjects/${editingId.value}`, form.value)
     } else {
-      await axios.post('/api/v1/admin/edu/subjects', form.value)
+      await axios.post('/admin/edu/subjects', form.value)
     }
     await fetchSubjects()
     closeModal()

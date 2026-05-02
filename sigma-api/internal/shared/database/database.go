@@ -74,8 +74,14 @@ func InitDB(dsn string) {
 		&models.Visitor{},
 		&models.Announcement{},
 		&models.Medicine{},
+		&models.MedicineMutation{},
 		&models.Disease{},
-		&models.FitnessRecord{},
+		&models.MedicalVisit{},
+		&models.ObservationRecord{},
+		&models.MedicalCertificate{},
+		&models.AnthropometryRecord{},
+		&models.MedicalFacility{},
+		&models.Bed{},
 		&models.Book{},
 		&models.Borrowing{},
 		&models.Setting{},
@@ -84,11 +90,14 @@ func InitDB(dsn string) {
 		&models.LessonMemorization{},
 		&models.TeacherAttendance{},
 		&models.TeachingJournal{},
+		&models.CashFlow{},
 	)
 	if err != nil {
 		log.Fatalf("Auto-Migration failed: %v", err)
 	}
 
 	DB = db
+	SeedMedicalData()
+
 	log.Printf("High-Performance SQLite initialized in WAL mode at: %s", dsn)
 }

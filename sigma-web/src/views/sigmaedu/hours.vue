@@ -27,7 +27,7 @@ const form = ref({
 
 const fetchHours = async () => {
   try {
-    const response = await axios.get('/api/v1/admin/edu/hours')
+    const response = await axios.get('/admin/edu/hours')
     hours.value = response.data
   } catch (err) {
     console.error('Gagal mengambil data jam pelajaran:', err)
@@ -62,7 +62,7 @@ const handleSubmit = async () => {
     if (editingId.value) {
       await axios.put(`/api/v1/admin/edu/hours/${editingId.value}`, form.value)
     } else {
-      await axios.post('/api/v1/admin/edu/hours', form.value)
+      await axios.post('/admin/edu/hours', form.value)
     }
     await fetchHours()
     closeModal()

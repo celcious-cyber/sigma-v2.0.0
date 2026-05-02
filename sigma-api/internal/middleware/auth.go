@@ -11,6 +11,11 @@ import (
 // Protected handles JWT validation for secured routes
 func Protected() fiber.Handler {
 	return func(c fiber.Ctx) error {
+		// Skip OPTIONS preflight
+		if c.Method() == "OPTIONS" {
+			return c.Next()
+		}
+
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			fmt.Println("[AUTH ERROR] Missing authorization header")

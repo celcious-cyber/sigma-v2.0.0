@@ -33,7 +33,7 @@ func (h *SigmagateHandler) GetDashboard(c fiber.Ctx) error {
 	isBlocked, permitStats, _ := h.studentSvc.IsPermitBlocked(studentID)
 
 	// 3. Health Stats (Recent 8)
-	var fitnessHistory []models.FitnessRecord
+	var fitnessHistory []models.AnthropometryRecord
 	database.DB.Where("student_id = ?", studentID).Order("date desc").Limit(8).Find(&fitnessHistory)
 
 	// 4. Global Announcements

@@ -20,7 +20,7 @@ const filters = ref({
 
 const fetchData = async () => {
   try {
-    const clRes = await axios.get('/api/v1/admin/edu/classrooms')
+    const clRes = await axios.get('/admin/edu/classrooms')
     classrooms.value = clRes.data
     if (classrooms.value.length > 0 && !filters.value.classroom_id) {
       filters.value.classroom_id = classrooms.value[0].ID

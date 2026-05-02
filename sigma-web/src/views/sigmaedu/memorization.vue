@@ -48,8 +48,8 @@ const bulkForm = ref({
 const fetchData = async () => {
   try {
     const [clRes, subRes] = await Promise.all([
-      axios.get('/api/v1/admin/edu/classrooms'),
-      axios.get('/api/v1/admin/edu/subjects')
+      axios.get('/admin/edu/classrooms'),
+      axios.get('/admin/edu/subjects')
     ])
     classrooms.value = clRes.data
     subjects.value = subRes.data
@@ -75,7 +75,7 @@ const loadMemorizationData = async () => {
       classroom_id: filters.value.classroom_id,
       date: filters.value.date
     }
-    const res = await axios.get('/api/v1/admin/edu/memorization', { params })
+    const res = await axios.get('/admin/edu/memorization', { params })
     
     // Process current records into a matrix
     const matrix: Record<number, any> = {}
@@ -149,7 +149,7 @@ const savePersonalMemorization = async () => {
       remarks: personalForm.value.remarks,
       date: new Date(personalForm.value.date).toISOString()
     }]
-    await axios.post('/api/v1/admin/edu/memorization/bulk', payload)
+    await axios.post('/admin/edu/memorization/bulk', payload)
     await loadMemorizationData()
     showPersonalModal.value = false
     triggerToast('Hafalan Berhasil Disimpan!')
@@ -212,7 +212,7 @@ const saveBulkMemorization = async () => {
       return
     }
 
-    await axios.post('/api/v1/admin/edu/memorization/bulk', payload)
+    await axios.post('/admin/edu/memorization/bulk', payload)
     filters.value.classroom_id = bulkForm.value.classroom_id
     filters.value.date = bulkForm.value.date
     await loadMemorizationData()

@@ -49,10 +49,10 @@ const newJournal = reactive({
 const fetchData = async () => {
   try {
     const [clRes, subRes, hrRes, tRes] = await Promise.all([
-      axios.get('/api/v1/admin/edu/classrooms'),
-      axios.get('/api/v1/admin/edu/subjects'),
-      axios.get('/api/v1/admin/edu/hours'),
-      axios.get('/api/v1/admin/base/teachers')
+      axios.get('/admin/edu/classrooms'),
+      axios.get('/admin/edu/subjects'),
+      axios.get('/admin/edu/hours'),
+      axios.get('/admin/base/teachers')
     ])
     classrooms.value = clRes.data
     subjects.value = subRes.data
@@ -72,7 +72,7 @@ const loadJournals = async () => {
     if (filters.value.classroom_id) params.classroom_id = filters.value.classroom_id
     if (filters.value.subject_id) params.subject_id = filters.value.subject_id
     
-    const res = await axios.get('/api/v1/admin/edu/journals', { params })
+    const res = await axios.get('/admin/edu/journals', { params })
     journals.value = res.data
   } catch (err) {
     console.error('Gagal memuat presensi:', err)
@@ -131,7 +131,7 @@ const handleSubmit = async () => {
       await axios.put(`/api/v1/admin/edu/journals/${editingId.value}`, payload)
       toastMessage.value = 'Presensi Berhasil Diperbarui!'
     } else {
-      await axios.post('/api/v1/admin/edu/journals', payload)
+      await axios.post('/admin/edu/journals', payload)
       toastMessage.value = 'Presensi Berhasil Ditambahkan!'
     }
     

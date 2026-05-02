@@ -11,7 +11,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 // Config API
-const API_URL = '/api/v1/admin/base/alumni'
+const API_URL = '/admin/base/alumni'
 
 // State
 const alumniList = ref<any[]>([])

@@ -38,7 +38,7 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
 
 const fetchProfile = async () => {
   try {
-    const res = await axios.get('/api/v1/auth/me')
+    const res = await axios.get('/auth/me')
     user.value = res.data.data
     profileForm.value = {
       name: user.value.name,
@@ -55,7 +55,7 @@ const fetchProfile = async () => {
 const updateProfile = async () => {
   isSavingProfile.value = true
   try {
-    await axios.put('/api/v1/auth/profile', profileForm.value)
+    await axios.put('/auth/profile', profileForm.value)
     showToast('Profil berhasil diperbarui')
     fetchProfile()
   } catch (err: any) {
@@ -73,7 +73,7 @@ const updatePassword = async () => {
 
   isSavingPassword.value = true
   try {
-    await axios.put('/api/v1/auth/password', {
+    await axios.put('/auth/password', {
       old_password: passwordForm.value.old_password,
       new_password: passwordForm.value.new_password
     })
@@ -99,7 +99,7 @@ const handleFileUpload = async (event: any) => {
 
   isUploadingAvatar.value = true
   try {
-    const res = await axios.post('/api/v1/auth/avatar', formData, {
+    const res = await axios.post('/auth/avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     showToast('Foto profil berhasil diunggah')

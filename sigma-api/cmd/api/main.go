@@ -15,6 +15,7 @@ import (
 	fiberLogger "github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/static"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 )
 
 func main() {
@@ -31,6 +32,13 @@ func main() {
 	})
 
 	// 3. Register Gateways (BFF Strategy)
+	// Global Middlewares
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"*"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+	}))
+	
 	api := app.Group("/api/v1")
 
 	// Health check
@@ -44,8 +52,6 @@ func main() {
 		}
 		return c.JSON(fiber.Map{"status": "ok", "database": "connected"})
 	})
-	
-	// Global Middlewares
 	api.Use(recover.New())
 	api.Use(fiberLogger.New()) 
 

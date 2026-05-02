@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { 
-  Building2, Plus, Search, MoreVertical, 
+  Building2, Plus, 
   Trash2, Edit3, AlertCircle, CheckCircle2, X,
   Layers, CreditCard, Clock
 } from 'lucide-vue-next'
@@ -27,7 +27,7 @@ const formatRupiah = (val: number) => {
 const fetchCategories = async () => {
   isLoading.value = true
   try {
-    const res = await axios.get('/api/v1/admin/flow/categories')
+    const res = await axios.get('/admin/flow/categories')
     categories.value = Array.isArray(res.data) ? res.data : []
   } catch (err) {
     console.error('Failed to fetch categories', err)
@@ -62,7 +62,7 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   try {
     if (modalMode.value === 'create') {
-      await axios.post('/api/v1/admin/flow/categories', form.value)
+      await axios.post('/admin/flow/categories', form.value)
     } else {
       await axios.put(`/api/v1/admin/flow/categories/${editingId.value}`, form.value)
     }

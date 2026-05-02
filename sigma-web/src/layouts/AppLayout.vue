@@ -34,6 +34,10 @@
             <GraduationCap :size="20" />
             <span>Sigmaedu</span>
           </router-link>
+          <router-link to="/sigmacare" class="nav-item">
+            <Heart :size="20" />
+            <span>Sigma Care</span>
+          </router-link>
         </div>
 
         <div class="pb-4">
@@ -85,7 +89,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { 
-  LayoutDashboard, Users, CreditCard, ShieldAlert, GraduationCap, Settings, Bell 
+  LayoutDashboard, Users, CreditCard, ShieldAlert, GraduationCap, Settings, Bell, Heart
 } from 'lucide-vue-next'
 
 const route = useRoute()

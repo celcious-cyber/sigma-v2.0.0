@@ -29,7 +29,7 @@ const form = ref({
 
 const fetchClassrooms = async () => {
   try {
-    const response = await axios.get('/api/v1/admin/edu/classrooms')
+    const response = await axios.get('/admin/edu/classrooms')
     classrooms.value = response.data
   } catch (err) {
     console.error('Gagal mengambil data kelas:', err)
@@ -40,7 +40,7 @@ const fetchClassrooms = async () => {
 
 const fetchTeachers = async () => {
   try {
-    const response = await axios.get('/api/v1/admin/base/teachers')
+    const response = await axios.get('/admin/base/teachers')
     teachers.value = response.data
   } catch (err) {
     console.error('Gagal mengambil data guru:', err)
@@ -85,7 +85,7 @@ const handleSubmit = async () => {
     if (editingId.value) {
       await axios.put(`/api/v1/admin/edu/classrooms/${editingId.value}`, payload)
     } else {
-      await axios.post('/api/v1/admin/edu/classrooms', payload)
+      await axios.post('/admin/edu/classrooms', payload)
     }
     await fetchClassrooms()
     closeModal()
@@ -139,7 +139,7 @@ const fetchStudentData = async () => {
   try {
     const [classRes, unRes] = await Promise.all([
       axios.get(`/api/v1/admin/edu/classrooms/${selectedClassroom.value.ID}/students`),
-      axios.get('/api/v1/admin/edu/students/unassigned')
+      axios.get('/admin/edu/students/unassigned')
     ])
     classStudents.value = classRes.data
     unassignedStudents.value = unRes.data
@@ -150,7 +150,7 @@ const fetchStudentData = async () => {
 
 const addToClass = async (studentId: number) => {
   try {
-    await axios.post('/api/v1/admin/edu/students/assign', {
+    await axios.post('/admin/edu/students/assign', {
       student_ids: [studentId],
       classroom_id: selectedClassroom.value.ID
     })
@@ -163,7 +163,7 @@ const addToClass = async (studentId: number) => {
 const removeFromClass = async (studentId: number) => {
   if (!confirm('Keluarkan santri dari kelas ini?')) return
   try {
-    await axios.post('/api/v1/admin/edu/students/assign', {
+    await axios.post('/admin/edu/students/assign', {
       student_ids: [studentId],
       classroom_id: null
     })

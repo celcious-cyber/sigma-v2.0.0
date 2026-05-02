@@ -85,7 +85,7 @@ const removeCategory = async (val: string) => {
 
   try {
     isLoading.value = true
-    await axios.delete('/api/v1/admin/edu/assessments', {
+    await axios.delete('/admin/edu/assessments', {
       params: {
         ...filters.value,
         type: val
@@ -118,8 +118,8 @@ const remarksMap = ref<Record<number, string>>({})
 const fetchData = async () => {
   try {
     const [clRes, sbRes] = await Promise.all([
-      axios.get('/api/v1/admin/edu/classrooms'),
-      axios.get('/api/v1/admin/edu/subjects')
+      axios.get('/admin/edu/classrooms'),
+      axios.get('/admin/edu/subjects')
     ])
     classrooms.value = clRes.data
     subjects.value = sbRes.data
@@ -143,7 +143,7 @@ const loadAssessmentData = async () => {
   try {
     const [stRes, asRes] = await Promise.all([
       axios.get(`/api/v1/admin/edu/classrooms/${filters.value.classroom_id}/students`),
-      axios.get('/api/v1/admin/edu/assessments', { params: filters.value })
+      axios.get('/admin/edu/assessments', { params: filters.value })
     ])
     
     students.value = stRes.data
@@ -236,7 +236,7 @@ const savePersonalScores = async () => {
       grade: calculateGrade(personalForm.value[t.value])
     })).filter(a => a.score !== null)
 
-    await axios.post('/api/v1/admin/edu/assessments/bulk', payload)
+    await axios.post('/admin/edu/assessments/bulk', payload)
     await loadAssessmentData()
     showPersonalModal.value = false
     toastMessage.value = `Nilai ${selectedStudent.value.name} Disimpan!`
@@ -267,7 +267,7 @@ const saveBulkScores = async () => {
       grade: calculateGrade(bulkForm.value.scores[s.ID] || null)
     })).filter(a => a.score !== null)
 
-    await axios.post('/api/v1/admin/edu/assessments/bulk', payload)
+    await axios.post('/admin/edu/assessments/bulk', payload)
     await loadAssessmentData()
     showBulkModal.value = false
     toastMessage.value = 'Nilai Berhasil Disimpan!'
@@ -298,7 +298,7 @@ const deleteStudentScores = async (student: any) => {
       grade: ''
     }))
 
-    await axios.post('/api/v1/admin/edu/assessments/bulk', payload)
+    await axios.post('/admin/edu/assessments/bulk', payload)
     await loadAssessmentData()
     toastMessage.value = 'Data Berhasil Dihapus'
     toastType.value = 'success'

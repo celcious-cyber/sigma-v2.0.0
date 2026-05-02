@@ -58,11 +58,11 @@ const fetchData = async () => {
   isLoading.value = true
   try {
     const [scRes, clRes, hrRes, sbRes, tcRes] = await Promise.all([
-      axios.get('/api/v1/admin/edu/schedules'),
-      axios.get('/api/v1/admin/edu/classrooms'),
-      axios.get('/api/v1/admin/edu/hours'),
-      axios.get('/api/v1/admin/edu/subjects'),
-      axios.get('/api/v1/admin/base/teachers')
+      axios.get('/admin/edu/schedules'),
+      axios.get('/admin/edu/classrooms'),
+      axios.get('/admin/edu/hours'),
+      axios.get('/admin/edu/subjects'),
+      axios.get('/admin/base/teachers')
     ])
     schedules.value = scRes.data
     classrooms.value = clRes.data
@@ -150,7 +150,7 @@ const handleSubmit = async () => {
     if (editingId.value) {
       await axios.put(`/api/v1/admin/edu/schedules/${editingId.value}`, payload)
     } else {
-      await axios.post('/api/v1/admin/edu/schedules', payload)
+      await axios.post('/admin/edu/schedules', payload)
     }
     await fetchData()
     closeModal()

@@ -41,7 +41,7 @@ const eventTypes = [
 
 const fetchEvents = async () => {
   try {
-    const response = await axios.get('/api/v1/admin/edu/calendar')
+    const response = await axios.get('/admin/edu/calendar')
     events.value = response.data
   } catch (err) {
     console.error('Gagal mengambil data kalender:', err)
@@ -147,7 +147,7 @@ const handleSubmit = async () => {
     if (editingId.value) {
       await axios.put(`/api/v1/admin/edu/calendar/${editingId.value}`, payload)
     } else {
-      await axios.post('/api/v1/admin/edu/calendar', payload)
+      await axios.post('/admin/edu/calendar', payload)
     }
     await fetchEvents()
     closeModal()

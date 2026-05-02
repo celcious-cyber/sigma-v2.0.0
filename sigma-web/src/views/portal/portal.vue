@@ -28,7 +28,7 @@ const panels = ref([
   { name: 'Sigmaflow', icon: Wallet, color: 'indigo', desc: 'Manajemen Keuangan & SPP', url: '/sigmaflow' },
   { name: 'Sigmadesk', icon: NotepadText, color: 'purple', desc: 'Tamu & Surat Menyurat', url: '#' },
   { name: 'Sigmaguard', icon: ShieldCheck, color: 'rose', desc: 'Perizinan & Keamanan', url: '/sigmaguard/violations' },
-  { name: 'Sigmacare', icon: Ambulance, color: 'rose', desc: 'Kesehatan & Kebugaran', url: '#' },
+  { name: 'Sigmacare', icon: Ambulance, color: 'rose', desc: 'Kesehatan & Kebugaran', url: '/sigmacare' },
   { name: 'Sigmalit', icon: BookOpen, color: 'rose', desc: 'Manajemen Perpustakaan', url: '#' },
 ])
 
